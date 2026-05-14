@@ -23,6 +23,14 @@ class AudioEngine:
         self.lock = threading.Lock()
 
     @staticmethod
+    def _clamp_sweep_duration(sec):
+        try:
+            x = float(sec)
+        except (TypeError, ValueError):
+            return 4.0
+        return max(0.5, min(30.0, x))
+
+    @staticmethod
     def _normalized_device(device_id):
         """Pywebview may pass JS strings; OutputStream expects int index or None (default)."""
         if device_id is None:
@@ -135,7 +143,7 @@ class AudioEngine:
             print(f"启动音频失败: {e}")
             return False
 
-    def start_sweep(self, f_low, f_high, db):
+    def start_sweep(self, f_low, f_high, db, duration_sec=None):
         with self.lock:
             self.mode = "sweep"
             self.sweep_low = float(f_low)
@@ -144,6 +152,8 @@ class AudioEngine:
             self.last_db = float(db)
             self.phase = 0.0
             self._sweep_sample_pos = 0
+            if duration_sec is not None:
+                self.sweep_duration = self._clamp_sweep_duration(duration_sec)
 
         if self.stream is not None:
             self.stop()
@@ -193,6 +203,13 @@ class AudioEngine:
                 return
             self.sweep_low = float(f_low)
             self.sweep_high = float(f_high)
+
+    def set_sweep_duration(self, duration_sec):
+        with self.lock:
+            if self.mode != "sweep":
+                return
+            self.sweep_duration = self._clamp_sweep_duration(duration_sec)
+            self._sweep_sample_pos = 0
     
     def set_volume(self, db):
         """设置音量（dB值）"""
@@ -210,7 +227,7 @@ class AudioEngine:
             if mode == "sweep":
                 f_lo = self.sweep_low
                 f_hi = self.sweep_high
-                self.start_sweep(f_lo, f_hi, db)
+                self.start_sweep(f_lo, f_hi, db, None)
             else:
                 self.start(self.frequency, db)
     
@@ -237,9 +254,13 @@ class Api:
         """开始播放正弦波"""
         return self.audio.start(frequency, volume)
 
-    def start_sweep(self, f_low, f_high, volume):
-        """开始播放对数扫频（从 f_low 到 f_high，循环）"""
-        return self.audio.start_sweep(f_low, f_high, volume)
+    def start_sweep(self, f_low, f_high, volume, duration_sec=None):
+        """开始播放对数扫频（从 f_low 到 f_high，循环）。duration_sec 单次扫频时长（秒），默认沿用引擎当前值。"""
+        return self.audio.start_sweep(f_low, f_high, volume, duration_sec)
+
+    def set_sweep_duration(self, duration_sec):
+        """声场模式：调整单次扫频时长（秒）"""
+        self.audio.set_sweep_duration(duration_sec)
     
     def stop_tone(self):
         """停止播放"""
@@ -274,7 +295,7 @@ def main():
         'Sweet Signal Generator',
         'src/index.html',
         width=560,
-        height=760,
+        height=800,
         resizable=False,
         js_api=api
     )

@@ -568,6 +568,17 @@
           </div>
         </div>
       </div>
+      <div id="sweepDurationSection" class="volume-section hidden">
+        <div class="section-label">扫频时长</div>
+        <div class="volume-control">
+          <div class="slider-wrap">
+            <input type="range" id="sweepDurationSlider" min="1" max="60" value="8" step="1">
+          </div>
+          <div class="volume-value">
+            <span id="sweepDurationLabel">4.0</span><span class="volume-unit">秒</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="btn-row">
@@ -848,9 +859,10 @@ window.pywebview = window.pywebview || {};
     const electro = testMode === 'electro';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
     document.getElementById('panelField').classList.toggle('hidden', electro);
+    document.getElementById('sweepDurationSection').classList.toggle('hidden', electro);
     document.getElementById('hintText').textContent = electro
       ? '拖拽旋钮或点击调节频率'
-      : '左右两枚触点共用整条弧线的对数刻度；拖动离谁近就调谁。播放为对数扫频（等倍频程时间）。';
+      : '左右两枚触点共用整条弧线的对数刻度；拖动离谁近就调谁。播放为对数扫频。可调扫频时长（单次从起到止的时间）。';
   }
 
   document.querySelectorAll('input[name="testMode"]').forEach((r) => {
@@ -864,13 +876,29 @@ window.pywebview = window.pywebview || {};
     });
   });
 
+  function getSweepDurationSec() {
+    const v = parseInt(document.getElementById('sweepDurationSlider').value, 10);
+    return Math.max(0.5, Math.min(30, v * 0.5));
+  }
+
+  function updateSweepDurationLabel() {
+    document.getElementById('sweepDurationLabel').textContent = getSweepDurationSec().toFixed(1);
+  }
+
+  document.getElementById('sweepDurationSlider').addEventListener('input', () => {
+    updateSweepDurationLabel();
+    if (isPlaying && testMode === 'field' && window.pywebview && window.pywebview.api) {
+      window.pywebview.api.set_sweep_duration(getSweepDurationSec());
+    }
+  });
+
   document.getElementById('btnPlay').addEventListener('click', () => {
     if (isPlaying) return;
     if (!window.pywebview || !window.pywebview.api) return;
     if (testMode === 'electro') {
       window.pywebview.api.start_tone(frequency, currentGain);
     } else {
-      window.pywebview.api.start_sweep(fLowField, fHighField, currentGain);
+      window.pywebview.api.start_sweep(fLowField, fHighField, currentGain, getSweepDurationSec());
     }
     isPlaying = true;
     updateUI();
@@ -895,6 +923,7 @@ window.pywebview = window.pywebview || {};
   renderKnob();
   renderFieldKnob();
   updateVolumeDisplay();
+  updateSweepDurationLabel();
   applyModeFromUI();
 
   window.updateDeviceList = function(devices) {

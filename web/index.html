@@ -602,6 +602,17 @@
           </div>
         </div>
       </div>
+      <div id="sweepDurationSection" class="volume-section hidden">
+        <div class="section-label">扫频时长</div>
+        <div class="volume-control">
+          <div class="slider-wrap">
+            <input type="range" id="sweepDurationSlider" min="1" max="60" value="8" step="1">
+          </div>
+          <div class="volume-value">
+            <span id="sweepDurationLabel">4.0</span><span class="volume-unit">秒</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Buttons -->
@@ -629,7 +640,6 @@
   let currentGain = 0.85;
   const MIN_DB = -60;
   const MAX_DB = 0;
-  const SWEEP_SEC = 4;
   let sweepTimer = null;
 
   let testMode = 'electro';
@@ -714,17 +724,27 @@
     }
   }
 
+  function getSweepSec() {
+    const v = parseInt(document.getElementById('sweepDurationSlider').value, 10);
+    return Math.max(0.5, Math.min(30, v * 0.5));
+  }
+
+  function updateSweepDurationLabel() {
+    document.getElementById('sweepDurationLabel').textContent = getSweepSec().toFixed(1);
+  }
+
   // Log sweep: exponentialRampToValueAtTime on frequency gives equal time per octave (log f vs linear t).
   function planSweepSegment(ctx, osc, tStart, fL, fH) {
+    const dur = getSweepSec();
     const lo = Math.max(20, Math.min(fL, fH));
     const hi = Math.max(lo, Math.min(20000, Math.max(fL, fH)));
     if (hi <= lo * 1.001) {
       osc.frequency.setValueAtTime(lo, tStart);
-      return tStart + SWEEP_SEC;
+      return tStart + dur;
     }
     osc.frequency.setValueAtTime(lo, tStart);
-    osc.frequency.exponentialRampToValueAtTime(hi, tStart + SWEEP_SEC);
-    return tStart + SWEEP_SEC;
+    osc.frequency.exponentialRampToValueAtTime(hi, tStart + dur);
+    return tStart + dur;
   }
 
   function extendSweepSchedule() {
@@ -738,7 +758,8 @@
       t = planSweepSegment(ctx, osc, t, fLowField, fHighField);
     }
     clearSweepTimer();
-    sweepTimer = setTimeout(extendSweepSchedule, 1800);
+    const delay = Math.min(3000, Math.max(400, getSweepSec() * 350));
+    sweepTimer = setTimeout(extendSweepSchedule, delay);
   }
 
   function connectOutput() {
@@ -1003,15 +1024,23 @@
 
   volumeSlider.addEventListener('input', updateVolumeDisplay);
 
+  document.getElementById('sweepDurationSlider').addEventListener('input', () => {
+    updateSweepDurationLabel();
+    if (isPlaying && testMode === 'field') {
+      extendSweepSchedule();
+    }
+  });
+
   function applyModeFromUI() {
     const checked = document.querySelector('input[name="testMode"]:checked');
     testMode = checked ? checked.value : 'electro';
     const electro = testMode === 'electro';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
     document.getElementById('panelField').classList.toggle('hidden', electro);
+    document.getElementById('sweepDurationSection').classList.toggle('hidden', electro);
     document.getElementById('hintText').textContent = electro
       ? '拖拽旋钮或点击调节频率'
-      : '左右两枚触点共用整条弧线的对数刻度；拖动离谁近就调谁。播放为对数扫频（等倍频程时间）。';
+      : '左右两枚触点共用整条弧线的对数刻度；拖动离谁近就调谁。播放为对数扫频。可调扫频时长（单次从起到止的时间）。';
   }
 
   document.querySelectorAll('input[name="testMode"]').forEach((r) => {
@@ -1137,6 +1166,7 @@
   renderKnob();
   renderFieldKnob();
   updateVolumeDisplay();
+  updateSweepDurationLabel();
   applyModeFromUI();
 })();
 </script>
