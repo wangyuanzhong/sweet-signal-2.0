@@ -85,8 +85,88 @@
   .subtitle {
     font-size: 0.85rem;
     color: var(--text-muted);
-    margin-bottom: 28px;
+    margin-bottom: 18px;
     font-weight: 500;
+  }
+
+  .mode-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 22px;
+  }
+  .mode-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main);
+    user-select: none;
+  }
+  .mode-option input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+  .mode-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(180, 160, 190, 0.45);
+    background: rgba(255, 255, 255, 0.65);
+    box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.85);
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  }
+  .mode-option:hover .mode-dot { transform: scale(1.06); }
+  .mode-option input:checked + .mode-dot {
+    border-color: #ff9ec6;
+    box-shadow: 0 0 0 4px rgba(255, 158, 198, 0.32);
+    background: radial-gradient(circle at 50% 50%, #a8e6cf 0 45%, #ffffff 46% 100%);
+  }
+
+  .hidden { display: none !important; }
+
+  .knob-fill-high {
+    fill: none;
+    stroke: url(#knobGradient);
+    stroke-width: 14;
+    stroke-linecap: round;
+    opacity: 0.55;
+  }
+
+  #fieldKnobSvg .knob-fill,
+  #fieldKnobSvg .knob-fill-high {
+    stroke: url(#knobGradientField);
+  }
+
+  .freq-dual {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+  }
+  .freq-line {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: var(--text-main);
+    line-height: 1.2;
+  }
+  .freq-tag {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-right: 4px;
   }
 
   .knob-wrapper {
@@ -396,31 +476,78 @@
     <h1>Sweet Signal</h1>
     <div class="subtitle">Pure Tone Generator</div>
 
-    <div class="knob-wrapper">
-      <svg class="knob-svg" viewBox="0 0 220 220" id="knobSvg">
-        <defs>
-          <linearGradient id="knobGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff9ec6"/>
-            <stop offset="100%" stop-color="#d4a5ff"/>
-          </linearGradient>
-          <linearGradient id="capGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#fff0f7"/>
-            <stop offset="100%" stop-color="#ffe4f0"/>
-          </linearGradient>
-        </defs>
-        <path class="knob-track" id="knobTrack" d=""/>
-        <path class="knob-fill" id="knobFill" d=""/>
-        <circle class="knob-cap" cx="110" cy="110" r="72"/>
-        <circle class="knob-indicator" id="knobIndicator" cx="110" cy="50" r="6"/>
-      </svg>
-      <div class="freq-display">
-        <div class="freq-value" id="freqValue">1000</div>
-        <div class="freq-unit" id="freqUnit">Hz</div>
+    <div class="mode-row" role="radiogroup" aria-label="测试模式">
+      <label class="mode-option">
+        <input type="radio" name="testMode" value="electro" checked>
+        <span class="mode-dot" aria-hidden="true"></span>电声测试
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="testMode" value="field">
+        <span class="mode-dot" aria-hidden="true"></span>声场测试
+      </label>
+    </div>
+
+    <div id="panelElectro">
+      <div class="knob-wrapper">
+        <svg class="knob-svg" viewBox="0 0 220 220" id="knobSvg">
+          <defs>
+            <linearGradient id="knobGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff9ec6"/>
+              <stop offset="100%" stop-color="#d4a5ff"/>
+            </linearGradient>
+            <linearGradient id="capGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fff0f7"/>
+              <stop offset="100%" stop-color="#ffe4f0"/>
+            </linearGradient>
+          </defs>
+          <path class="knob-track" id="knobTrack" d=""/>
+          <path class="knob-fill" id="knobFill" d=""/>
+          <circle class="knob-cap" cx="110" cy="110" r="72"/>
+          <circle class="knob-indicator" id="knobIndicator" cx="110" cy="50" r="6"/>
+        </svg>
+        <div class="freq-display">
+          <div class="freq-value" id="freqValue">1000</div>
+          <div class="freq-unit" id="freqUnit">Hz</div>
+        </div>
+      </div>
+      <div class="knob-labels">
+        <span>20 Hz</span>
+        <span>20 kHz</span>
       </div>
     </div>
-    <div class="knob-labels">
-      <span>20 Hz</span>
-      <span>20 kHz</span>
+
+    <div id="panelField" class="hidden">
+      <div class="knob-wrapper">
+        <svg class="knob-svg" viewBox="0 0 220 220" id="fieldKnobSvg">
+          <defs>
+            <linearGradient id="knobGradientField" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff9ec6"/>
+              <stop offset="100%" stop-color="#d4a5ff"/>
+            </linearGradient>
+            <linearGradient id="capGradientField" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fff0f7"/>
+              <stop offset="100%" stop-color="#ffe4f0"/>
+            </linearGradient>
+          </defs>
+          <path class="knob-track" id="fieldKnobTrack" d=""/>
+          <path class="knob-fill" id="fieldKnobFillLow" d=""/>
+          <path class="knob-fill-high" id="fieldKnobFillHigh" d=""/>
+          <circle class="knob-cap" cx="110" cy="110" r="72" fill="url(#capGradientField)"/>
+          <circle class="knob-indicator" id="fieldIndLow" cx="110" cy="50" r="6"/>
+          <circle class="knob-indicator" id="fieldIndHigh" cx="110" cy="50" r="6"/>
+        </svg>
+        <div class="freq-display">
+          <div class="freq-dual" id="fieldFreqDual">
+            <div class="freq-line" id="fieldLineLow"><span class="freq-tag">起</span><span id="fieldLowVal">100</span><span id="fieldLowUnit">Hz</span></div>
+            <div class="freq-line" id="fieldLineHigh"><span class="freq-tag">止</span><span id="fieldHighVal">10.0</span><span id="fieldHighUnit">kHz</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="knob-labels">
+        <span>20 Hz</span>
+        <span>起 · 止</span>
+        <span>20 kHz</span>
+      </div>
     </div>
 
     <div class="controls-row">
@@ -459,39 +586,68 @@
 window.pywebview = window.pywebview || {};
 
 (function() {
-  // ===== State =====
-  let frequency = 1000;
-  let knobRatio = 0.5;
-  let isPlaying = false;
-  let currentGain = 0.85;
   const MIN_FREQ = 20;
   const MAX_FREQ = 20000;
 
-  // ===== Frequency Functions =====
-  function freqToRatio(f) {
-    return (Math.log10(f) - Math.log10(MIN_FREQ)) / (Math.log10(MAX_FREQ) - Math.log10(MIN_FREQ));
-  }
-  function ratioToFreq(r) {
-    const logMin = Math.log10(MIN_FREQ);
-    const logMax = Math.log10(MAX_FREQ);
-    return Math.pow(10, logMin + r * (logMax - logMin));
-  }
-
-  // ===== Knob Rendering =====
   const cx = 110, cy = 110, R = 88;
   const capR = 72;
   const startAngle = 135 * Math.PI / 180;
   const endAngle = 405 * Math.PI / 180;
+  const midAngle = 270 * Math.PI / 180;
 
-  function polar(cx, cy, r, ang) {
-    return { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) };
+  let testMode = 'electro';
+  let frequency = 1000;
+  let knobRatio = freqToRatio(frequency);
+
+  let fLowField = 100;
+  let fHighField = 10000;
+
+  let isPlaying = false;
+  let currentGain = 0.85;
+  let fieldDragSide = 'low';
+  let lastFieldFullRatio = 0.25;
+
+  const svg = document.getElementById('knobSvg');
+  const fieldSvg = document.getElementById('fieldKnobSvg');
+
+  function freqToRatio(f) {
+    return (Math.log10(f) - Math.log10(MIN_FREQ)) / (Math.log10(MAX_FREQ) - Math.log10(MIN_FREQ));
   }
 
-  function describeArc(cx, cy, r, start, end) {
+  function ratioToFreq(r) {
+    const logMin = Math.log10(MIN_FREQ);
+    const logMax = Math.log10(MAX_FREQ);
+    const clamped = Math.max(0, Math.min(1, r));
+    return Math.pow(10, logMin + clamped * (logMax - logMin));
+  }
+
+  function polar(px, py, rad, ang) {
+    return { x: px + rad * Math.cos(ang), y: py + rad * Math.sin(ang) };
+  }
+
+  function describeArc(px, py, rad, start, end) {
     const largeArc = (end - start) <= Math.PI ? 0 : 1;
-    const s = polar(cx, cy, r, end);
-    const e = polar(cx, cy, r, start);
-    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 0 ${e.x} ${e.y}`;
+    const s = polar(px, py, rad, end);
+    const e = polar(px, py, rad, start);
+    return `M ${s.x} ${s.y} A ${rad} ${rad} 0 ${largeArc} 0 ${e.x} ${e.y}`;
+  }
+
+  function getFullArcRatio(e, svg, lastRatio) {
+    const rect = svg.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = clientX - rect.left - rect.width / 2;
+    const y = clientY - rect.top - rect.height / 2;
+    let angle = Math.atan2(y, x);
+    if (angle < 0) angle += 2 * Math.PI;
+    let rel = angle - startAngle;
+    if (rel < 0) rel += 2 * Math.PI;
+    let ratio = rel / (endAngle - startAngle);
+    if (ratio > 1 && ratio < 1.3) {
+      if (lastRatio < 0.5) return 0;
+      return 1;
+    }
+    return Math.max(0, Math.min(1, ratio));
   }
 
   function renderKnob() {
@@ -522,82 +678,140 @@ window.pywebview = window.pywebview || {};
     elU.textContent = unit;
   }
 
-  // ===== Knob Interaction =====
-  let isDragging = false;
-
-  function getAngleFromEvent(e, svg) {
-    const rect = svg.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const x = clientX - rect.left - rect.width / 2;
-    const y = clientY - rect.top - rect.height / 2;
-    let angle = Math.atan2(y, x);
-    if (angle < 0) angle += 2 * Math.PI;
-    let rel = angle - startAngle;
-    if (rel < 0) rel += 2 * Math.PI;
-    let ratio = rel / (endAngle - startAngle);
-    
-    // 处理死区：在底部区域根据来的方向决定停在哪个端点
-    if (ratio > 1 && ratio < 1.3) {
-      // 根据当前位置判断应该停在哪个端点
-      if (knobRatio < 0.5) {
-        return 0; // 从低频侧来，停在20Hz
-      } else {
-        return 1; // 从高频侧来，停在20kHz
-      }
+  function formatFreqInto(f, valEl, unitEl) {
+    let displayFreq = f;
+    let unit = 'Hz';
+    if (f >= 1000) {
+      displayFreq = f / 1000;
+      unit = 'kHz';
     }
-    
-    // 限制在有效范围内
-    return Math.max(0, Math.min(1, ratio));
+    if (unit === 'Hz') {
+      valEl.textContent = Math.round(displayFreq).toString();
+    } else {
+      valEl.textContent = displayFreq.toFixed(displayFreq < 10 ? 2 : 1);
+    }
+    unitEl.textContent = unit;
   }
 
-  const svg = document.getElementById('knobSvg');
+  function renderFieldKnob() {
+    document.getElementById('fieldKnobTrack').setAttribute('d', describeArc(cx, cy, R, startAngle, endAngle));
+
+    const rL = freqToRatio(fLowField);
+    const rH = freqToRatio(fHighField);
+    const angleLow = startAngle + rL * (midAngle - startAngle);
+    const angleHigh = midAngle + rH * (endAngle - midAngle);
+
+    document.getElementById('fieldKnobFillLow').setAttribute('d', describeArc(cx, cy, R, startAngle, angleLow));
+    document.getElementById('fieldKnobFillHigh').setAttribute('d', describeArc(cx, cy, R, midAngle, angleHigh));
+
+    const il = polar(cx, cy, capR - 18, angleLow);
+    const ih = polar(cx, cy, capR - 18, angleHigh);
+    document.getElementById('fieldIndLow').setAttribute('cx', il.x);
+    document.getElementById('fieldIndLow').setAttribute('cy', il.y);
+    document.getElementById('fieldIndHigh').setAttribute('cx', ih.x);
+    document.getElementById('fieldIndHigh').setAttribute('cy', ih.y);
+
+    formatFreqInto(fLowField, document.getElementById('fieldLowVal'), document.getElementById('fieldLowUnit'));
+    formatFreqInto(fHighField, document.getElementById('fieldHighVal'), document.getElementById('fieldHighUnit'));
+  }
+
+  function applyFieldDragFromEvent(e, svg) {
+    const ratioFull = getFullArcRatio(e, svg, lastFieldFullRatio);
+    lastFieldFullRatio = ratioFull;
+    const ang = startAngle + ratioFull * (endAngle - startAngle);
+
+    if (fieldDragSide === 'low') {
+      const a = Math.min(Math.max(ang, startAngle), midAngle);
+      const r = (a - startAngle) / (midAngle - startAngle);
+      fLowField = ratioToFreq(r);
+      if (fLowField > fHighField) fLowField = fHighField;
+    } else {
+      const a = Math.max(Math.min(ang, endAngle), midAngle);
+      const r = (a - midAngle) / (endAngle - midAngle);
+      fHighField = ratioToFreq(r);
+      if (fHighField < fLowField) fHighField = fLowField;
+    }
+
+    renderFieldKnob();
+    if (isPlaying && window.pywebview && window.pywebview.api) {
+      window.pywebview.api.set_sweep_range(fLowField, fHighField);
+    }
+  }
+
+  let dragTarget = null;
 
   svg.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    knobRatio = getAngleFromEvent(e, svg);
+    dragTarget = 'electro-knob';
+    knobRatio = getFullArcRatio(e, svg, knobRatio);
     frequency = ratioToFreq(knobRatio);
     renderKnob();
   });
   window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    knobRatio = getAngleFromEvent(e, svg);
-    frequency = ratioToFreq(knobRatio);
-    renderKnob();
-    if (isPlaying) {
-      window.pywebview.api.set_frequency(frequency);
+    if (dragTarget === 'electro-knob') {
+      knobRatio = getFullArcRatio(e, svg, knobRatio);
+      frequency = ratioToFreq(knobRatio);
+      renderKnob();
+      if (isPlaying && window.pywebview && window.pywebview.api) {
+        window.pywebview.api.set_frequency(frequency);
+      }
+    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+      applyFieldDragFromEvent(e, fieldSvg);
     }
   });
-  window.addEventListener('mouseup', () => { isDragging = false; });
+  window.addEventListener('mouseup', () => { dragTarget = null; });
 
   svg.addEventListener('touchstart', (e) => {
-    isDragging = true;
-    knobRatio = getAngleFromEvent(e, svg);
+    dragTarget = 'electro-knob';
+    knobRatio = getFullArcRatio(e, svg, knobRatio);
     frequency = ratioToFreq(knobRatio);
     renderKnob();
     e.preventDefault();
-  }, {passive: false});
+  }, { passive: false });
   window.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    knobRatio = getAngleFromEvent(e, svg);
-    frequency = ratioToFreq(knobRatio);
-    renderKnob();
-    if (isPlaying) {
-      window.pywebview.api.set_frequency(frequency);
+    if (dragTarget === 'electro-knob') {
+      knobRatio = getFullArcRatio(e, svg, knobRatio);
+      frequency = ratioToFreq(knobRatio);
+      renderKnob();
+      if (isPlaying && window.pywebview && window.pywebview.api) {
+        window.pywebview.api.set_frequency(frequency);
+      }
+      e.preventDefault();
+    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+      applyFieldDragFromEvent(e, fieldSvg);
+      e.preventDefault();
     }
-    e.preventDefault();
-  }, {passive: false});
-  window.addEventListener('touchend', () => { isDragging = false; });
+  }, { passive: false });
+  window.addEventListener('touchend', () => { dragTarget = null; });
+  window.addEventListener('touchcancel', () => { dragTarget = null; });
 
-  // ===== Volume Slider =====
+  fieldSvg.addEventListener('mousedown', (e) => {
+    if (testMode !== 'field') return;
+    dragTarget = 'field-knob';
+    const ratioFull = getFullArcRatio(e, fieldSvg, lastFieldFullRatio);
+    lastFieldFullRatio = ratioFull;
+    const ang = startAngle + ratioFull * (endAngle - startAngle);
+    fieldDragSide = ang <= midAngle ? 'low' : 'high';
+    applyFieldDragFromEvent(e, fieldSvg);
+  });
+
+  fieldSvg.addEventListener('touchstart', (e) => {
+    if (testMode !== 'field') return;
+    dragTarget = 'field-knob';
+    const ratioFull = getFullArcRatio(e, fieldSvg, lastFieldFullRatio);
+    lastFieldFullRatio = ratioFull;
+    const ang = startAngle + ratioFull * (endAngle - startAngle);
+    fieldDragSide = ang <= midAngle ? 'low' : 'high';
+    applyFieldDragFromEvent(e, fieldSvg);
+    e.preventDefault();
+  }, { passive: false });
+
   const volumeSlider = document.getElementById('volumeSlider');
   const volumeDbDisplay = document.getElementById('volumeDb');
 
   function updateVolumeDisplay() {
     const sliderVal = parseInt(volumeSlider.value, 10);
-    // 将 0-100 映射到 -60dB 到 0dB（线性 dB 刻度）
     const db = -60 + (sliderVal / 100) * 60;
-    currentGain = db; // 存储 dB 值
+    currentGain = db;
     if (db <= -59.9) {
       volumeDbDisplay.textContent = '-∞';
     } else {
@@ -607,25 +821,9 @@ window.pywebview = window.pywebview || {};
 
   volumeSlider.addEventListener('input', () => {
     updateVolumeDisplay();
-    // 实时发送音量更新（发送 dB 值）
-    if (isPlaying) {
+    if (isPlaying && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_volume(currentGain);
     }
-  });
-
-  // ===== Buttons =====
-  document.getElementById('btnPlay').addEventListener('click', () => {
-    if (isPlaying) return;
-    window.pywebview.api.start_tone(frequency, currentGain);
-    isPlaying = true;
-    updateUI();
-  });
-
-  document.getElementById('btnStop').addEventListener('click', () => {
-    if (!isPlaying) return;
-    window.pywebview.api.stop_tone();
-    isPlaying = false;
-    updateUI();
   });
 
   function updateUI() {
@@ -640,22 +838,66 @@ window.pywebview = window.pywebview || {};
     }
   }
 
-  // ===== Device Selection =====
-  document.getElementById('outputDevice').addEventListener('change', (e) => {
-    const deviceId = e.target.value;
-    window.pywebview.api.set_device(deviceId);
+  function applyModeFromUI() {
+    const checked = document.querySelector('input[name="testMode"]:checked');
+    testMode = checked ? checked.value : 'electro';
+    const electro = testMode === 'electro';
+    document.getElementById('panelElectro').classList.toggle('hidden', !electro);
+    document.getElementById('panelField').classList.toggle('hidden', electro);
+    document.getElementById('hintText').textContent = electro
+      ? '拖拽旋钮或点击调节频率'
+      : '左侧弧线调节扫频起点，右侧弧线调节终点；循环播放对数扫频';
+  }
+
+  document.querySelectorAll('input[name="testMode"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      if (isPlaying && window.pywebview && window.pywebview.api) {
+        window.pywebview.api.stop_tone();
+        isPlaying = false;
+        updateUI();
+      }
+      applyModeFromUI();
+    });
   });
 
-  // ===== Initialize =====
-  renderKnob();
-  updateVolumeDisplay();
+  document.getElementById('btnPlay').addEventListener('click', () => {
+    if (isPlaying) return;
+    if (!window.pywebview || !window.pywebview.api) return;
+    if (testMode === 'electro') {
+      window.pywebview.api.start_tone(frequency, currentGain);
+    } else {
+      window.pywebview.api.start_sweep(fLowField, fHighField, currentGain);
+    }
+    isPlaying = true;
+    updateUI();
+  });
 
-  // 暴露更新设备列表的函数给 Python
+  document.getElementById('btnStop').addEventListener('click', () => {
+    if (!isPlaying) return;
+    if (window.pywebview && window.pywebview.api) {
+      window.pywebview.api.stop_tone();
+    }
+    isPlaying = false;
+    updateUI();
+  });
+
+  document.getElementById('outputDevice').addEventListener('change', (e) => {
+    const deviceId = e.target.value;
+    if (window.pywebview && window.pywebview.api) {
+      window.pywebview.api.set_device(deviceId);
+    }
+  });
+
+  renderKnob();
+  renderFieldKnob();
+  updateVolumeDisplay();
+  applyModeFromUI();
+
   window.updateDeviceList = function(devices) {
     const select = document.getElementById('outputDevice');
     const currentValue = select.value;
     select.innerHTML = '<option value="">默认输出设备</option>';
-    devices.forEach(device => {
+    devices.forEach((device) => {
       const option = document.createElement('option');
       option.value = device.id;
       option.textContent = device.name;
