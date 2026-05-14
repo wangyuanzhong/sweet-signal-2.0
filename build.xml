@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Apache Ant orchestration for local builds (Windows / macOS / Linux).
+
+  Prerequisites:
+  - JDK + Ant installed, OR any environment where `ant` runs
+  - Python 3 on PATH as `python` (override with -Dpython.cmd= py)
+
+  Targets:
+    ant clean        — remove desktop_app/dist and desktop_app/build
+    ant pip-install  — install requirements-dev.txt
+    ant build-exe    — pip-install then PyInstaller (Windows-friendly one-file exe)
+    ant rebuild      — clean + build-exe
+
+  GitHub Actions does not invoke this file; CI uses .github/workflows/build-windows.yml
+-->
+<project name="sweet-signal-2.0" default="help" basedir=".">
+  <description>Sweet Signal 2.0 local build orchestration</description>
+
+  <property name="desktop_app.dir" location="desktop_app"/>
+  <property name="python.cmd" value="python"/>
+
+  <target name="help">
+    <echo message="sweet-signal-2.0"/>
+    <echo message="Targets: clean | pip-install | build-exe | rebuild"/>
+    <echo message='Example: ant build-exe  /  ant -Dpython.cmd=py -313 build-exe'/>
+  </target>
+
+  <target name="clean">
+    <delete dir="${desktop_app.dir}/dist" quiet="true"/>
+    <delete dir="${desktop_app.dir}/build" quiet="true"/>
+  </target>
+
+  <target name="pip-install">
+    <exec executable="${python.cmd}" dir="." failonerror="true">
+      <arg value="-m"/><arg value="pip"/><arg value="install"/><arg value="--upgrade"/><arg value="pip"/>
+    </exec>
+    <exec executable="${python.cmd}" dir="." failonerror="true">
+      <arg value="-m"/><arg value="pip"/><arg value="install"/><arg value="-r"/><arg value="requirements-dev.txt"/>
+    </exec>
+  </target>
+
+  <target name="build-exe" depends="pip-install">
+    <!-- Build from desktop_app so paths in SweetSignal.spec match -->
+    <exec executable="${python.cmd}" dir="${desktop_app.dir}" failonerror="true">
+      <arg value="-m"/><arg value="PyInstaller"/><arg value="--noconfirm"/><arg value="SweetSignal.spec"/>
+    </exec>
+  </target>
+
+  <target name="rebuild" depends="clean,build-exe"/>
+
+</project>

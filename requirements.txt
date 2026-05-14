@@ -1,0 +1,4 @@
+# Runtime dependencies for desktop_app (sweet-signal executable)
+numpy>=1.26,<3
+sounddevice>=0.4.6
+pywebview>=5.0

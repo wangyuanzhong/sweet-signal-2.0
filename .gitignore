@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.spec.bak
+
+# Desktop app build outputs (relative to repo root)
+desktop_app/dist/
+desktop_app/build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE / tooling
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs / debug
+*.log
+npm-debug.log*
+
+# Coverage / pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# PyInstaller leftovers
+warn-*.txt

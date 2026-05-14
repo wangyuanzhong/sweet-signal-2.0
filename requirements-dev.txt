@@ -1,0 +1,4 @@
+# Local development & CI packaging
+-r requirements.txt
+
+pyinstaller>=6.0,<7
