@@ -86,6 +86,7 @@ class AudioEngine:
             if f1 <= f0 * 1.000001:
                 f_inst = np.full(frames, f0)
             else:
+                # Logarithmic sweep: f = f0 * (f1/f0)^(t/T) => equal time per octave.
                 f_inst = f0 * (f1 / f0) ** (t / T)
 
             dphi = 2 * np.pi * f_inst / sr
