@@ -134,39 +134,45 @@
 
   .hidden { display: none !important; }
 
-  .knob-fill-high {
-    fill: none;
-    stroke: url(#knobGradient);
-    stroke-width: 14;
-    stroke-linecap: round;
-    opacity: 0.55;
+  .field-sliders-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .volume-section.volume-half {
+    flex: 1;
+    min-width: 0;
+  }
+  .volume-section.volume-half .volume-value {
+    min-width: 44px;
+    font-size: 0.78rem;
   }
 
-  #fieldKnobSvg .knob-fill,
-  #fieldKnobSvg .knob-fill-high {
+  #fieldKnobSvg .knob-fill {
     stroke: url(#knobGradientField);
   }
-
-  .freq-dual {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: center;
-    justify-content: center;
+  #fieldKnobSvg .knob-cap {
+    fill: url(#capGradientField);
   }
-  .freq-line {
+
+  .sweep-label {
     font-family: 'Nunito', sans-serif;
     font-weight: 800;
-    font-size: 1.15rem;
+    font-size: 1.5rem;
     color: var(--text-main);
-    line-height: 1.2;
+    line-height: 1.05;
+    letter-spacing: 0.04em;
   }
-  .freq-tag {
-    font-size: 0.62rem;
-    font-weight: 700;
+  #panelField.field-panel-playing .sweep-label {
+    font-size: 1.12rem;
+    letter-spacing: 0.02em;
+  }
+  .sweep-label-unit {
+    font-size: 0.75rem;
     color: var(--text-muted);
-    letter-spacing: 0.5px;
-    margin-right: 4px;
+    font-weight: 600;
+    margin-top: 4px;
+    opacity: 0.35;
   }
 
   .knob-wrapper {
@@ -563,23 +569,19 @@
             </linearGradient>
           </defs>
           <path class="knob-track" id="fieldKnobTrack" d=""/>
-          <path class="knob-fill" id="fieldKnobFillLow" d=""/>
-          <path class="knob-fill-high" id="fieldKnobFillHigh" d=""/>
-          <circle class="knob-cap" cx="110" cy="110" r="72" fill="url(#capGradientField)"/>
+          <path class="knob-fill" id="fieldKnobFill" d=""/>
+          <circle class="knob-cap" cx="110" cy="110" r="72"/>
           <circle class="knob-indicator" id="fieldIndLow" cx="110" cy="50" r="6"/>
           <circle class="knob-indicator" id="fieldIndHigh" cx="110" cy="50" r="6"/>
         </svg>
         <div class="freq-display">
-          <div class="freq-dual" id="fieldFreqDual">
-            <div class="freq-line" id="fieldLineLow"><span class="freq-tag">起</span><span id="fieldLowVal">100</span><span id="fieldLowUnit">Hz</span></div>
-            <div class="freq-line" id="fieldLineHigh"><span class="freq-tag">止</span><span id="fieldHighVal">10.0</span><span id="fieldHighUnit">kHz</span></div>
-          </div>
+          <div class="freq-value sweep-label" id="fieldSweepTitle">SWEEP</div>
+          <div class="freq-unit sweep-label-unit" id="fieldSweepSub">&nbsp;</div>
         </div>
       </div>
       <div class="knob-labels">
-        <span>20 Hz</span>
-        <span>起 · 止</span>
-        <span>20 kHz</span>
+        <span id="fieldKnobLabelLow">100 Hz</span>
+        <span id="fieldKnobLabelHigh">10 kHz</span>
       </div>
     </div>
 
@@ -591,7 +593,7 @@
           <option value="">默认输出设备</option>
         </select>
       </div>
-      <div class="volume-section">
+      <div id="volumeRowElectro" class="volume-section">
         <div class="section-label">输出电平</div>
         <div class="volume-control">
           <div class="slider-wrap">
@@ -602,14 +604,27 @@
           </div>
         </div>
       </div>
-      <div id="sweepDurationSection" class="volume-section hidden">
-        <div class="section-label">扫频时长</div>
-        <div class="volume-control">
-          <div class="slider-wrap">
-            <input type="range" id="sweepDurationSlider" min="1" max="60" value="8" step="1">
+      <div id="volumeRowField" class="field-sliders-row hidden">
+        <div class="volume-section volume-half">
+          <div class="section-label">输出电平</div>
+          <div class="volume-control">
+            <div class="slider-wrap">
+              <input type="range" id="volumeSliderField" min="0" max="100" value="85">
+            </div>
+            <div class="volume-value">
+              <span id="volumeDbField">-1.4</span><span class="volume-unit">dBFS</span>
+            </div>
           </div>
-          <div class="volume-value">
-            <span id="sweepDurationLabel">4.0</span><span class="volume-unit">秒</span>
+        </div>
+        <div class="volume-section volume-half">
+          <div class="section-label">扫频时长</div>
+          <div class="volume-control">
+            <div class="slider-wrap">
+              <input type="range" id="sweepDurationSlider" min="1" max="60" value="8" step="1">
+            </div>
+            <div class="volume-value">
+              <span id="sweepDurationLabel">4.0</span><span class="volume-unit">秒</span>
+            </div>
           </div>
         </div>
       </div>
@@ -859,6 +874,15 @@
       btn.classList.remove('playing');
       txt.textContent = '播放';
     }
+    const panelField = document.getElementById('panelField');
+    const sweepTitle = document.getElementById('fieldSweepTitle');
+    if (panelField && sweepTitle) {
+      const fp = testMode === 'field' && isPlaying;
+      panelField.classList.toggle('field-panel-playing', fp);
+      if (testMode === 'field') {
+        sweepTitle.textContent = fp ? 'SWEEPING.' : 'SWEEP';
+      }
+    }
   }
 
   function setFrequencyFromRatio(r) {
@@ -896,19 +920,13 @@
     elU.textContent = unit;
   }
 
-  function formatFreqInto(f, valEl, unitEl) {
-    let displayFreq = f;
-    let unit = 'Hz';
+  function formatBandEdgeLabel(f) {
     if (f >= 1000) {
-      displayFreq = f / 1000;
-      unit = 'kHz';
+      const k = f / 1000;
+      const t = k < 10 ? k.toFixed(2) : k.toFixed(1);
+      return t + ' kHz';
     }
-    if (unit === 'Hz') {
-      valEl.textContent = Math.round(displayFreq).toString();
-    } else {
-      valEl.textContent = displayFreq.toFixed(displayFreq < 10 ? 2 : 1);
-    }
-    unitEl.textContent = unit;
+    return Math.round(f) + ' Hz';
   }
 
   function renderFieldKnob() {
@@ -918,16 +936,17 @@
     const rH = freqToRatio(fHighField);
     const angleLow = startAngle + rL * span;
     const angleHigh = startAngle + rH * span;
-    document.getElementById('fieldKnobFillLow').setAttribute('d', describeArc(cx, cy, R, startAngle, angleLow));
-    document.getElementById('fieldKnobFillHigh').setAttribute('d', describeArc(cx, cy, R, angleHigh, endAngle));
+    const a0 = Math.min(angleLow, angleHigh);
+    const a1 = Math.max(angleLow, angleHigh);
+    document.getElementById('fieldKnobFill').setAttribute('d', describeArc(cx, cy, R, a0, a1));
     const il = polar(cx, cy, capR - 18, angleLow);
     const ih = polar(cx, cy, capR - 18, angleHigh);
     document.getElementById('fieldIndLow').setAttribute('cx', il.x);
     document.getElementById('fieldIndLow').setAttribute('cy', il.y);
     document.getElementById('fieldIndHigh').setAttribute('cx', ih.x);
     document.getElementById('fieldIndHigh').setAttribute('cy', ih.y);
-    formatFreqInto(fLowField, document.getElementById('fieldLowVal'), document.getElementById('fieldLowUnit'));
-    formatFreqInto(fHighField, document.getElementById('fieldHighVal'), document.getElementById('fieldHighUnit'));
+    document.getElementById('fieldKnobLabelLow').textContent = formatBandEdgeLabel(fLowField);
+    document.getElementById('fieldKnobLabelHigh').textContent = formatBandEdgeLabel(fHighField);
   }
 
   function applyFieldDragFromEvent(e, svgEl) {
@@ -1008,21 +1027,35 @@
   }, { passive: false });
 
   const volumeSlider = document.getElementById('volumeSlider');
-  const volumeDbDisplay = document.getElementById('volumeDb');
+  const volumeSliderField = document.getElementById('volumeSliderField');
 
-  function updateVolumeDisplay() {
-    const sliderVal = parseInt(volumeSlider.value, 10);
+  function getActiveVolumeSlider() {
+    return testMode === 'electro' ? volumeSlider : volumeSliderField;
+  }
+
+  function syncVolumeSliders(source) {
+    const v = source.value;
+    volumeSlider.value = v;
+    volumeSliderField.value = v;
+  }
+
+  function updateVolumeDisplays() {
+    const sliderVal = parseInt(getActiveVolumeSlider().value, 10);
     currentGain = sliderVal / 100;
     const db = sliderToDb(sliderVal);
-    if (db <= -59.9) {
-      volumeDbDisplay.textContent = '-∞';
-    } else {
-      volumeDbDisplay.textContent = db.toFixed(1);
-    }
+    const dbText = db <= -59.9 ? '-∞' : db.toFixed(1);
+    document.getElementById('volumeDb').textContent = dbText;
+    document.getElementById('volumeDbField').textContent = dbText;
     updateGain();
   }
 
-  volumeSlider.addEventListener('input', updateVolumeDisplay);
+  function onVolumeInput(e) {
+    syncVolumeSliders(e.target);
+    updateVolumeDisplays();
+  }
+
+  volumeSlider.addEventListener('input', onVolumeInput);
+  volumeSliderField.addEventListener('input', onVolumeInput);
 
   document.getElementById('sweepDurationSlider').addEventListener('input', () => {
     updateSweepDurationLabel();
@@ -1037,10 +1070,18 @@
     const electro = testMode === 'electro';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
     document.getElementById('panelField').classList.toggle('hidden', electro);
-    document.getElementById('sweepDurationSection').classList.toggle('hidden', electro);
+    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro);
+    document.getElementById('volumeRowField').classList.toggle('hidden', electro);
+    if (electro) {
+      volumeSlider.value = volumeSliderField.value;
+    } else {
+      volumeSliderField.value = volumeSlider.value;
+    }
+    updateVolumeDisplays();
+    updateUI();
     document.getElementById('hintText').textContent = electro
       ? '拖拽旋钮或点击调节频率'
-      : '左右两枚触点共用整条弧线的对数刻度；拖动离谁近就调谁。播放为对数扫频。可调扫频时长（单次从起到止的时间）。';
+      : '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
   }
 
   document.querySelectorAll('input[name="testMode"]').forEach((r) => {
@@ -1165,7 +1206,7 @@
   enumerateDevices();
   renderKnob();
   renderFieldKnob();
-  updateVolumeDisplay();
+  updateVolumeDisplays();
   updateSweepDurationLabel();
   applyModeFromUI();
 })();
