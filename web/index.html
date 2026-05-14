@@ -647,7 +647,6 @@
   const capR = 72;
   const startAngle = 135 * Math.PI / 180;
   const endAngle = 405 * Math.PI / 180;
-  const midAngle = 270 * Math.PI / 180;
 
   const svg = document.getElementById('knobSvg');
   const fieldSvg = document.getElementById('fieldKnobSvg');
@@ -715,6 +714,7 @@
     }
   }
 
+  // Log sweep: exponentialRampToValueAtTime on frequency gives equal time per octave (log f vs linear t).
   function planSweepSegment(ctx, osc, tStart, fL, fH) {
     const lo = Math.max(20, Math.min(fL, fH));
     const hi = Math.max(lo, Math.min(20000, Math.max(fL, fH)));
@@ -892,12 +892,13 @@
 
   function renderFieldKnob() {
     document.getElementById('fieldKnobTrack').setAttribute('d', describeArc(cx, cy, R, startAngle, endAngle));
+    const span = endAngle - startAngle;
     const rL = freqToRatio(fLowField);
     const rH = freqToRatio(fHighField);
-    const angleLow = startAngle + rL * (midAngle - startAngle);
-    const angleHigh = midAngle + rH * (endAngle - midAngle);
+    const angleLow = startAngle + rL * span;
+    const angleHigh = startAngle + rH * span;
     document.getElementById('fieldKnobFillLow').setAttribute('d', describeArc(cx, cy, R, startAngle, angleLow));
-    document.getElementById('fieldKnobFillHigh').setAttribute('d', describeArc(cx, cy, R, midAngle, angleHigh));
+    document.getElementById('fieldKnobFillHigh').setAttribute('d', describeArc(cx, cy, R, angleHigh, endAngle));
     const il = polar(cx, cy, capR - 18, angleLow);
     const ih = polar(cx, cy, capR - 18, angleHigh);
     document.getElementById('fieldIndLow').setAttribute('cx', il.x);
@@ -909,19 +910,32 @@
   }
 
   function applyFieldDragFromEvent(e, svgEl) {
-    const ratioFull = getFullArcRatio(e, svgEl, lastFieldFullRatio);
-    lastFieldFullRatio = ratioFull;
-    const ang = startAngle + ratioFull * (endAngle - startAngle);
+    const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
+    lastFieldFullRatio = rPoint;
+    const fPoint = ratioToFreq(rPoint);
     if (fieldDragSide === 'low') {
-      const a = Math.min(Math.max(ang, startAngle), midAngle);
-      const r = (a - startAngle) / (midAngle - startAngle);
-      fLowField = ratioToFreq(r);
-      if (fLowField > fHighField) fLowField = fHighField;
+      fLowField = Math.min(fPoint, fHighField);
     } else {
-      const a = Math.max(Math.min(ang, endAngle), midAngle);
-      const r = (a - midAngle) / (endAngle - midAngle);
-      fHighField = ratioToFreq(r);
-      if (fHighField < fLowField) fHighField = fLowField;
+      fHighField = Math.max(fPoint, fLowField);
+    }
+    renderFieldKnob();
+    if (isPlaying && testMode === 'field') {
+      extendSweepSchedule();
+    }
+  }
+
+  function pickFieldHandleFromPointer(e, svgEl) {
+    const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
+    lastFieldFullRatio = rPoint;
+    const rLow = freqToRatio(fLowField);
+    const rHigh = freqToRatio(fHighField);
+    const fPoint = ratioToFreq(rPoint);
+    if (Math.abs(rPoint - rLow) <= Math.abs(rPoint - rHigh)) {
+      fieldDragSide = 'low';
+      fLowField = Math.min(fPoint, fHighField);
+    } else {
+      fieldDragSide = 'high';
+      fHighField = Math.max(fPoint, fLowField);
     }
     renderFieldKnob();
     if (isPlaying && testMode === 'field') {
@@ -962,21 +976,13 @@
   fieldSvg.addEventListener('mousedown', (e) => {
     if (testMode !== 'field') return;
     dragTarget = 'field-knob';
-    const ratioFull = getFullArcRatio(e, fieldSvg, lastFieldFullRatio);
-    lastFieldFullRatio = ratioFull;
-    const ang = startAngle + ratioFull * (endAngle - startAngle);
-    fieldDragSide = ang <= midAngle ? 'low' : 'high';
-    applyFieldDragFromEvent(e, fieldSvg);
+    pickFieldHandleFromPointer(e, fieldSvg);
   });
 
   fieldSvg.addEventListener('touchstart', (e) => {
     if (testMode !== 'field') return;
     dragTarget = 'field-knob';
-    const ratioFull = getFullArcRatio(e, fieldSvg, lastFieldFullRatio);
-    lastFieldFullRatio = ratioFull;
-    const ang = startAngle + ratioFull * (endAngle - startAngle);
-    fieldDragSide = ang <= midAngle ? 'low' : 'high';
-    applyFieldDragFromEvent(e, fieldSvg);
+    pickFieldHandleFromPointer(e, fieldSvg);
     e.preventDefault();
   }, { passive: false });
 
@@ -1005,7 +1011,7 @@
     document.getElementById('panelField').classList.toggle('hidden', electro);
     document.getElementById('hintText').textContent = electro
       ? '拖拽旋钮或点击调节频率'
-      : '左侧弧线调节扫频起点，右侧弧线调节终点；循环播放对数扫频';
+      : '左右两枚触点共用整条弧线的对数刻度；拖动离谁近就调谁。播放为对数扫频（等倍频程时间）。';
   }
 
   document.querySelectorAll('input[name="testMode"]').forEach((r) => {
