@@ -88,5 +88,6 @@ Ant 不负责安装 JDK；仅需本机可同时运行 `python`/`py` + `pip`。
 **Q：改过 `SweetSignal.spec` 后 CI 挂了？**  
 确认 `datas=[('src', 'src')]` 仍存在，且始终在 `desktop_app` 目录下执行 PyInstaller。
 
-**Q：`pywebview` 白屏或无法启动 UI？**  
-Windows 确认已安装 Edge WebView2 Runtime；若为远程无头 CI，本条不适用（CI 只做打包不写 UI 冒烟）。
+**Q：打包出来的 `SweetSignal.exe` 没声音 / 打不开输出流？**  
+常见原因是 **PyInstaller 单文件没有把 PortAudio DLL 打进包** 或未在解压目录 `_MEIPASS` 查找。本项目已在 `SweetSignal.spec` 中收集 `sounddevice`/`_sounddevice_data`，并通过 `desktop_app/pyi_runtime_path.py` 在启动时将 `_MEIPASS` prepend 到 `PATH`。若仍有异常，可先在同一台机器上用源码 `python desktop_app/main.py` 对照；若在源码正常而 exe 不行，多半是杀毒软件拦截或仍需更新 spec 中的二进制收集。
+

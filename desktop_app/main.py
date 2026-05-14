@@ -15,6 +15,37 @@ class AudioEngine:
         self.stream = None
         self.phase = 0.0
         self.lock = threading.Lock()
+
+    @staticmethod
+    def _normalized_device(device_id):
+        """Pywebview may pass JS strings; OutputStream expects int index or None (default)."""
+        if device_id is None:
+            return None
+        if isinstance(device_id, int):
+            return device_id
+        s = str(device_id).strip()
+        if not s:
+            return None
+        try:
+            return int(s)
+        except ValueError:
+            return None
+
+    def _effective_output_device(self):
+        idx = self._normalized_device(self.device_id)
+        if idx is None:
+            return sd.default.device[1]
+        return idx
+
+    def _samplerate_for_device(self, output_index):
+        try:
+            info = sd.query_devices(output_index)
+            sr = info.get('default_samplerate')
+            if sr:
+                return int(float(sr))
+        except Exception:
+            pass
+        return self.sample_rate
     
     def callback(self, outdata, frames, time_info, status):
         if status:
@@ -51,14 +82,19 @@ class AudioEngine:
             self.stop()
         
         try:
-            device = self.device_id if self.device_id else None
+            out_idx = self._effective_output_device()
+            sample_rate = self._samplerate_for_device(out_idx)
+
+            with self.lock:
+                self.sample_rate = sample_rate
+
             self.stream = sd.OutputStream(
-                samplerate=self.sample_rate,
+                samplerate=sample_rate,
                 channels=2,
                 dtype=np.float32,
-                device=device,
+                device=out_idx,
                 callback=self.callback,
-                blocksize=2048  # 较大的缓冲区减少爆音
+                blocksize=2048,
             )
             self.stream.start()
             self.is_playing = True
