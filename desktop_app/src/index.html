@@ -168,38 +168,6 @@
     font-size: 1.12rem;
     letter-spacing: 0.02em;
   }
-  #panelReverb.reverb-panel-playing .sweep-label {
-    font-size: 1.12rem;
-    letter-spacing: 0.02em;
-  }
-
-  .reverb-top-row {
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 28px;
-  }
-  .reverb-center-wrap {
-    flex: 0 0 220px;
-    width: 220px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .reverb-knob-wrap {
-    margin: 0 auto;
-  }
-  #reverbKnobSvg {
-    pointer-events: none;
-  }
-  #reverbKnobSvg .knob-fill {
-    stroke: url(#knobGradientReverb);
-  }
-  #reverbKnobSvg .knob-cap {
-    fill: url(#capGradientReverb);
-  }
-
   .sweep-label-unit {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -589,8 +557,14 @@
       </div>
     </div>
 
-    <div id="panelReverb" class="hidden">
-      <div class="reverb-top-row">
+    <div class="controls-row">
+      <div class="output-section">
+        <div class="select-icon">🔊</div>
+        <select id="outputDevice">
+          <option value="">默认输出设备</option>
+        </select>
+      </div>
+      <div id="volumeRowReverb" class="field-sliders-row hidden">
         <div class="volume-section volume-half">
           <div class="section-label">播放时长</div>
           <div class="volume-control">
@@ -599,29 +573,6 @@
             </div>
             <div class="volume-value">
               <span id="pinkDurationLabel">2.0</span><span class="volume-unit">秒</span>
-            </div>
-          </div>
-        </div>
-        <div class="reverb-center-wrap">
-          <div class="knob-wrapper reverb-knob-wrap">
-            <svg class="knob-svg" viewBox="0 0 220 220" id="reverbKnobSvg" aria-hidden="true">
-              <defs>
-                <linearGradient id="knobGradientReverb" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#ff9ec6"/>
-                  <stop offset="100%" stop-color="#d4a5ff"/>
-                </linearGradient>
-                <linearGradient id="capGradientReverb" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color="#fff0f7"/>
-                  <stop offset="100%" stop-color="#ffe4f0"/>
-                </linearGradient>
-              </defs>
-              <path class="knob-track" id="reverbKnobTrack" d=""/>
-              <path class="knob-fill" id="reverbKnobFill" d=""/>
-              <circle class="knob-cap" cx="110" cy="110" r="72"/>
-            </svg>
-            <div class="freq-display">
-              <div class="freq-value sweep-label" id="reverbCenterTitle">PINK</div>
-              <div class="freq-unit sweep-label-unit" id="reverbCenterSub">&nbsp;</div>
             </div>
           </div>
         </div>
@@ -636,15 +587,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="controls-row">
-      <div class="output-section">
-        <div class="select-icon">🔊</div>
-        <select id="outputDevice">
-          <option value="">默认输出设备</option>
-        </select>
       </div>
       <div id="volumeRowElectro" class="volume-section">
         <div class="section-label">输出电平</div>
@@ -801,10 +743,33 @@ window.pywebview = window.pywebview || {};
     return Math.round(f) + ' Hz';
   }
 
+  function formatSecKnobLabel(sec) {
+    return sec.toFixed(1) + ' s';
+  }
+
   function renderFieldKnob() {
     document.getElementById('fieldKnobTrack').setAttribute('d', describeArc(cx, cy, R, startAngle, endAngle));
 
     const span = endAngle - startAngle;
+    if (testMode === 'reverb') {
+      const rP = secToTimedRatio(getPinkDurationSec());
+      const rS = secToTimedRatio(getSilenceDurationSec());
+      const anglePlay = startAngle + rP * span;
+      const angleSil = startAngle + rS * span;
+      const a0 = Math.min(anglePlay, angleSil);
+      const a1 = Math.max(anglePlay, angleSil);
+      document.getElementById('fieldKnobFill').setAttribute('d', describeArc(cx, cy, R, a0, a1));
+      const il = polar(cx, cy, capR - 18, anglePlay);
+      const ih = polar(cx, cy, capR - 18, angleSil);
+      document.getElementById('fieldIndLow').setAttribute('cx', il.x);
+      document.getElementById('fieldIndLow').setAttribute('cy', il.y);
+      document.getElementById('fieldIndHigh').setAttribute('cx', ih.x);
+      document.getElementById('fieldIndHigh').setAttribute('cy', ih.y);
+      document.getElementById('fieldKnobLabelLow').textContent = formatSecKnobLabel(getPinkDurationSec());
+      document.getElementById('fieldKnobLabelHigh').textContent = formatSecKnobLabel(getSilenceDurationSec());
+      return;
+    }
+
     const rL = freqToRatio(fLowField);
     const rH = freqToRatio(fHighField);
     const angleLow = startAngle + rL * span;
@@ -825,19 +790,26 @@ window.pywebview = window.pywebview || {};
     document.getElementById('fieldKnobLabelHigh').textContent = formatBandEdgeLabel(fHighField);
   }
 
-  function renderReverbStaticKnob() {
-    const trackPath = describeArc(cx, cy, R, startAngle, endAngle);
-    document.getElementById('reverbKnobTrack').setAttribute('d', trackPath);
-    const span = endAngle - startAngle;
-    const fillRatio = 0.72;
-    const currentAngle = startAngle + fillRatio * span;
-    const fillPath = describeArc(cx, cy, R, startAngle, currentAngle);
-    document.getElementById('reverbKnobFill').setAttribute('d', fillPath);
-  }
-
   function applyFieldDragFromEvent(e, svg) {
     const rPoint = getFullArcRatio(e, svg, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
+    if (testMode === 'reverb') {
+      const secPoint = ratioToTimedSec(rPoint);
+      const pinkEl = document.getElementById('pinkDurationSlider');
+      const silEl = document.getElementById('silenceDurationSlider');
+      if (fieldDragSide === 'low') {
+        setTimedSliderFromSec(pinkEl, secPoint);
+      } else {
+        setTimedSliderFromSec(silEl, secPoint);
+      }
+      updatePinkSilenceLabels();
+      renderFieldKnob();
+      if (isPlaying && window.pywebview && window.pywebview.api) {
+        window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
+        startReverbUiPhaseTimer();
+      }
+      return;
+    }
     const fPoint = ratioToFreq(rPoint);
     if (fieldDragSide === 'low') {
       fLowField = Math.min(fPoint, fHighField);
@@ -854,6 +826,26 @@ window.pywebview = window.pywebview || {};
   function pickFieldHandleFromPointer(e, svg) {
     const rPoint = getFullArcRatio(e, svg, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
+    if (testMode === 'reverb') {
+      const rPlay = secToTimedRatio(getPinkDurationSec());
+      const rSil = secToTimedRatio(getSilenceDurationSec());
+      const pinkEl = document.getElementById('pinkDurationSlider');
+      const silEl = document.getElementById('silenceDurationSlider');
+      if (Math.abs(rPoint - rPlay) <= Math.abs(rPoint - rSil)) {
+        fieldDragSide = 'low';
+        setTimedSliderFromSec(pinkEl, ratioToTimedSec(rPoint));
+      } else {
+        fieldDragSide = 'high';
+        setTimedSliderFromSec(silEl, ratioToTimedSec(rPoint));
+      }
+      updatePinkSilenceLabels();
+      renderFieldKnob();
+      if (isPlaying && window.pywebview && window.pywebview.api) {
+        window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
+        startReverbUiPhaseTimer();
+      }
+      return;
+    }
     const rLow = freqToRatio(fLowField);
     const rHigh = freqToRatio(fHighField);
     const fPoint = ratioToFreq(rPoint);
@@ -886,7 +878,7 @@ window.pywebview = window.pywebview || {};
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.set_frequency(frequency);
       }
-    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
     }
   });
@@ -908,7 +900,7 @@ window.pywebview = window.pywebview || {};
         window.pywebview.api.set_frequency(frequency);
       }
       e.preventDefault();
-    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
       e.preventDefault();
     }
@@ -917,13 +909,13 @@ window.pywebview = window.pywebview || {};
   window.addEventListener('touchcancel', () => { dragTarget = null; });
 
   fieldSvg.addEventListener('mousedown', (e) => {
-    if (testMode !== 'field') return;
+    if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
   });
 
   fieldSvg.addEventListener('touchstart', (e) => {
-    if (testMode !== 'field') return;
+    if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
     e.preventDefault();
@@ -1009,26 +1001,14 @@ window.pywebview = window.pywebview || {};
     const sweepSub = document.getElementById('fieldSweepSub');
     if (panelField && sweepTitle && sweepSub) {
       const fpField = testMode === 'field' && isPlaying;
-      panelField.classList.toggle('field-panel-playing', fpField);
+      const fpReverb = testMode === 'reverb' && isPlaying;
+      panelField.classList.toggle('field-panel-playing', fpField || fpReverb);
       if (testMode === 'field') {
         sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
         sweepSub.textContent = '\u00a0';
-      }
-    }
-    const panelReverb = document.getElementById('panelReverb');
-    const reverbTitle = document.getElementById('reverbCenterTitle');
-    const reverbSub = document.getElementById('reverbCenterSub');
-    if (panelReverb && reverbTitle && reverbSub) {
-      const pr = testMode === 'reverb' && isPlaying;
-      panelReverb.classList.toggle('reverb-panel-playing', pr);
-      if (testMode === 'reverb') {
-        if (!isPlaying) {
-          reverbTitle.textContent = 'PINK';
-          reverbSub.textContent = '\u00a0';
-        } else {
-          reverbTitle.textContent = reverbPhaseIsPink ? 'PINK' : '····';
-          reverbSub.textContent = reverbPhaseIsPink ? '粉噪' : '静音';
-        }
+      } else if (testMode === 'reverb') {
+        sweepTitle.textContent = 'STEP';
+        sweepSub.textContent = !isPlaying ? '\u00a0' : (reverbPhaseIsPink ? '粉噪' : '静音');
       }
     }
   }
@@ -1040,8 +1020,8 @@ window.pywebview = window.pywebview || {};
     const field = testMode === 'field';
     const reverb = testMode === 'reverb';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
-    document.getElementById('panelField').classList.toggle('hidden', !field);
-    document.getElementById('panelReverb').classList.toggle('hidden', !reverb);
+    document.getElementById('panelField').classList.toggle('hidden', !field && !reverb);
+    document.getElementById('volumeRowReverb').classList.toggle('hidden', !reverb);
     document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
     document.getElementById('volumeRowField').classList.toggle('hidden', !field);
     if (electro) {
@@ -1052,6 +1032,7 @@ window.pywebview = window.pywebview || {};
       volumeSlider.value = volumeSliderField.value;
     }
     updateVolumeDisplays();
+    renderFieldKnob();
     updateUI();
     const hint = document.getElementById('hintText');
     if (electro) {
@@ -1059,7 +1040,7 @@ window.pywebview = window.pywebview || {};
     } else if (field) {
       hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
     } else {
-      hint.textContent = '左右为粉噪播放与静音时长；中间为状态。下方与电声测试相同：输出设备与输出电平。';
+      hint.textContent = '与声场相同的双弧圆钮：触点调粉噪播放与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
     }
   }
 
@@ -1083,6 +1064,24 @@ window.pywebview = window.pywebview || {};
   function getTimedSliderSec(sliderEl) {
     const v = parseInt(sliderEl.value, 10);
     return Math.max(0.5, Math.min(30, v * 0.5));
+  }
+
+  const MIN_TIMED_SEC = 0.5;
+  const MAX_TIMED_SEC = 30;
+
+  function secToTimedRatio(sec) {
+    const s = Math.max(MIN_TIMED_SEC, Math.min(MAX_TIMED_SEC, sec));
+    return (s - MIN_TIMED_SEC) / (MAX_TIMED_SEC - MIN_TIMED_SEC);
+  }
+
+  function ratioToTimedSec(r) {
+    const clamped = Math.max(0, Math.min(1, r));
+    return MIN_TIMED_SEC + clamped * (MAX_TIMED_SEC - MIN_TIMED_SEC);
+  }
+
+  function setTimedSliderFromSec(sliderEl, sec) {
+    const steps = Math.round(Math.max(MIN_TIMED_SEC, Math.min(MAX_TIMED_SEC, sec)) / 0.5);
+    sliderEl.value = String(Math.max(1, Math.min(60, steps)));
   }
 
   function getPinkDurationSec() {
@@ -1111,6 +1110,7 @@ window.pywebview = window.pywebview || {};
 
   document.getElementById('pinkDurationSlider').addEventListener('input', () => {
     updatePinkSilenceLabels();
+    renderFieldKnob();
     if (isPlaying && testMode === 'reverb' && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
       startReverbUiPhaseTimer();
@@ -1118,6 +1118,7 @@ window.pywebview = window.pywebview || {};
   });
   document.getElementById('silenceDurationSlider').addEventListener('input', () => {
     updatePinkSilenceLabels();
+    renderFieldKnob();
     if (isPlaying && testMode === 'reverb' && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
       startReverbUiPhaseTimer();
@@ -1158,7 +1159,6 @@ window.pywebview = window.pywebview || {};
 
   renderKnob();
   renderFieldKnob();
-  renderReverbStaticKnob();
   updateVolumeDisplays();
   updateSweepDurationLabel();
   updatePinkSilenceLabels();
