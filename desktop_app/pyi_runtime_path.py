@@ -1,5 +1,6 @@
-# PyInstaller one-file: PortAudio (sounddevice) loads via ctypes; DLLs live under
-# sys._MEIPASS. Ensure that directory is searched before import side-effects run.
+# PyInstaller frozen build: PortAudio (sounddevice) loads via ctypes; DLLs live under
+# sys._MEIPASS (one-file and one-folder layouts). Prepend _MEIPASS to PATH before imports
+# that load native code.
 import os
 import sys
 

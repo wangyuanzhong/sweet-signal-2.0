@@ -9,7 +9,7 @@
   Targets:
     ant clean        — remove desktop_app/dist and desktop_app/build
     ant pip-install  — install requirements-dev.txt
-    ant build-exe    — pip-install then PyInstaller (Windows-friendly one-file exe)
+    ant build-exe    — pip-install then PyInstaller (Windows-friendly app folder under dist/)
     ant rebuild      — clean + build-exe
 
   GitHub Actions does not invoke this file; CI uses .github/workflows/build-windows.yml
