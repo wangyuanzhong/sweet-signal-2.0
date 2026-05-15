@@ -186,6 +186,16 @@
     filter: drop-shadow(0 0 10px rgba(255, 158, 198, 0.45));
     transition: filter 0.18s ease;
   }
+  /* 混响播放中的静音段：关闭默认圆钮阴影，与粉噪段高亮形成对比 */
+  #panelField.reverb-silence-phase .knob-wrapper {
+    filter: none;
+  }
+  #panelField.reverb-silence-phase #fieldKnobSvg .knob-cap,
+  #panelField.reverb-silence-phase #fieldKnobSvg .knob-fill,
+  #panelField.reverb-silence-phase #fieldKnobSvg .knob-indicator {
+    filter: none;
+    transition: filter 0.22s ease;
+  }
   .sweep-label-unit {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -1073,7 +1083,10 @@
     if (panelField && sweepTitle && sweepSub) {
       const fpField = testMode === 'field' && isPlaying;
       panelField.classList.toggle('field-sweep-active', fpField);
-      panelField.classList.toggle('reverb-pink-on', testMode === 'reverb' && isPlaying && reverbPhaseIsPink);
+      const reverbPinkGlow = testMode === 'reverb' && isPlaying && reverbPhaseIsPink;
+      const reverbSilenceDim = testMode === 'reverb' && isPlaying && !reverbPhaseIsPink;
+      panelField.classList.toggle('reverb-pink-on', reverbPinkGlow);
+      panelField.classList.toggle('reverb-silence-phase', reverbSilenceDim);
       if (testMode === 'field') {
         sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
         sweepSub.textContent = '\u00a0';
