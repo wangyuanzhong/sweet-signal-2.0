@@ -598,29 +598,9 @@
           <option value="">默认输出设备</option>
         </select>
       </div>
-      <div id="volumeRowReverb" class="field-sliders-row hidden">
-        <div class="volume-section volume-half">
-          <div class="section-label">播放时长</div>
-          <div class="volume-control">
-            <div class="slider-wrap">
-              <input type="range" id="pinkDurationSlider" min="1" max="60" value="4" step="1">
-            </div>
-            <div class="volume-value">
-              <span id="pinkDurationLabel">2.0</span><span class="volume-unit">秒</span>
-            </div>
-          </div>
-        </div>
-        <div class="volume-section volume-half">
-          <div class="section-label">静音时长</div>
-          <div class="volume-control">
-            <div class="slider-wrap">
-              <input type="range" id="silenceDurationSlider" min="1" max="60" value="2" step="1">
-            </div>
-            <div class="volume-value">
-              <span id="silenceDurationLabel">1.0</span><span class="volume-unit">秒</span>
-            </div>
-          </div>
-        </div>
+      <div id="reverbDurationInputs" class="hidden" aria-hidden="true">
+        <input type="range" id="pinkDurationSlider" min="1" max="60" value="4" step="1">
+        <input type="range" id="silenceDurationSlider" min="1" max="60" value="2" step="1">
       </div>
       <div id="volumeRowElectro" class="volume-section">
         <div class="section-label">输出电平</div>
@@ -814,8 +794,10 @@
   }
 
   function updatePinkSilenceLabels() {
-    document.getElementById('pinkDurationLabel').textContent = getPinkSec().toFixed(1);
-    document.getElementById('silenceDurationLabel').textContent = getSilenceSec().toFixed(1);
+    const pl = document.getElementById('pinkDurationLabel');
+    const sl = document.getElementById('silenceDurationLabel');
+    if (pl) pl.textContent = getPinkSec().toFixed(1);
+    if (sl) sl.textContent = getSilenceSec().toFixed(1);
   }
 
   function clearReverbCycle() {
@@ -1347,7 +1329,6 @@
     const reverb = testMode === 'reverb';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
     document.getElementById('panelField').classList.toggle('hidden', !field && !reverb);
-    document.getElementById('volumeRowReverb').classList.toggle('hidden', !reverb);
     document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
     document.getElementById('volumeRowField').classList.toggle('hidden', !field);
     if (electro) {
@@ -1366,7 +1347,7 @@
     } else if (field) {
       hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
     } else {
-      hint.textContent = '与声场相同的双弧圆钮：触点调粉噪播放与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
+      hint.textContent = '与声场相同的双弧圆钮：两枚触点分别调粉噪播放时长与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
     }
   }
 
