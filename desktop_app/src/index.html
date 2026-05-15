@@ -93,7 +93,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 32px;
+    flex-wrap: wrap;
+    gap: 18px 22px;
     margin-bottom: 22px;
   }
   .mode-option {
@@ -491,6 +492,10 @@
         <input type="radio" name="testMode" value="field">
         <span class="mode-dot" aria-hidden="true"></span>声场测试
       </label>
+      <label class="mode-option">
+        <input type="radio" name="testMode" value="reverb">
+        <span class="mode-dot" aria-hidden="true"></span>混响测量
+      </label>
     </div>
 
     <div id="panelElectro">
@@ -594,6 +599,30 @@
           </div>
         </div>
       </div>
+      <div id="volumeRowReverb" class="field-sliders-row hidden">
+        <div class="volume-section volume-half">
+          <div class="section-label">粉噪时长</div>
+          <div class="volume-control">
+            <div class="slider-wrap">
+              <input type="range" id="pinkDurationSlider" min="1" max="60" value="4" step="1">
+            </div>
+            <div class="volume-value">
+              <span id="pinkDurationLabel">2.0</span><span class="volume-unit">秒</span>
+            </div>
+          </div>
+        </div>
+        <div class="volume-section volume-half">
+          <div class="section-label">静音时长</div>
+          <div class="volume-control">
+            <div class="slider-wrap">
+              <input type="range" id="silenceDurationSlider" min="1" max="60" value="2" step="1">
+            </div>
+            <div class="volume-value">
+              <span id="silenceDurationLabel">1.0</span><span class="volume-unit">秒</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="btn-row">
@@ -631,6 +660,8 @@ window.pywebview = window.pywebview || {};
   let currentGain = 0.85;
   let fieldDragSide = 'low';
   let lastFieldFullRatio = 0.25;
+  let reverbPhaseIsPink = true;
+  let reverbUiTimer = null;
 
   const svg = document.getElementById('knobSvg');
   const fieldSvg = document.getElementById('fieldKnobSvg');
@@ -747,7 +778,7 @@ window.pywebview = window.pywebview || {};
     }
 
     renderFieldKnob();
-    if (isPlaying && window.pywebview && window.pywebview.api) {
+    if (isPlaying && testMode === 'field' && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_sweep_range(fLowField, fHighField);
     }
   }
@@ -766,7 +797,7 @@ window.pywebview = window.pywebview || {};
       fHighField = Math.max(fPoint, fLowField);
     }
     renderFieldKnob();
-    if (isPlaying && window.pywebview && window.pywebview.api) {
+    if (isPlaying && testMode === 'field' && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_sweep_range(fLowField, fHighField);
     }
   }
@@ -787,7 +818,7 @@ window.pywebview = window.pywebview || {};
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.set_frequency(frequency);
       }
-    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
     }
   });
@@ -809,7 +840,7 @@ window.pywebview = window.pywebview || {};
         window.pywebview.api.set_frequency(frequency);
       }
       e.preventDefault();
-    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
       e.preventDefault();
     }
@@ -818,13 +849,13 @@ window.pywebview = window.pywebview || {};
   window.addEventListener('touchcancel', () => { dragTarget = null; });
 
   fieldSvg.addEventListener('mousedown', (e) => {
-    if (testMode !== 'field') return;
+    if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
   });
 
   fieldSvg.addEventListener('touchstart', (e) => {
-    if (testMode !== 'field') return;
+    if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
     e.preventDefault();
@@ -855,6 +886,35 @@ window.pywebview = window.pywebview || {};
     return testMode === 'electro' ? volumeSlider : volumeSliderField;
   }
 
+  function clearReverbUiTimer() {
+    if (reverbUiTimer) {
+      clearTimeout(reverbUiTimer);
+      reverbUiTimer = null;
+    }
+  }
+
+  function armReverbUiSilence() {
+    if (!isPlaying || testMode !== 'reverb') return;
+    reverbPhaseIsPink = false;
+    updateUI();
+    const ms = Math.max(80, getSilenceDurationSec() * 1000 - 30);
+    reverbUiTimer = setTimeout(armReverbUiPink, ms);
+  }
+
+  function armReverbUiPink() {
+    if (!isPlaying || testMode !== 'reverb') return;
+    reverbPhaseIsPink = true;
+    updateUI();
+    const ms = Math.max(80, getPinkDurationSec() * 1000 - 30);
+    reverbUiTimer = setTimeout(armReverbUiSilence, ms);
+  }
+
+  function startReverbUiPhaseTimer() {
+    clearReverbUiTimer();
+    reverbPhaseIsPink = true;
+    armReverbUiPink();
+  }
+
   function onVolumeInput(e) {
     syncVolumeSliders(e.target);
     updateVolumeDisplays();
@@ -878,11 +938,22 @@ window.pywebview = window.pywebview || {};
     }
     const panelField = document.getElementById('panelField');
     const sweepTitle = document.getElementById('fieldSweepTitle');
-    if (panelField && sweepTitle) {
-      const fp = testMode === 'field' && isPlaying;
-      panelField.classList.toggle('field-panel-playing', fp);
+    const sweepSub = document.getElementById('fieldSweepSub');
+    if (panelField && sweepTitle && sweepSub) {
+      const fpField = testMode === 'field' && isPlaying;
+      const fpReverb = testMode === 'reverb' && isPlaying;
+      panelField.classList.toggle('field-panel-playing', fpField || fpReverb);
       if (testMode === 'field') {
-        sweepTitle.textContent = fp ? 'SWEEPING.' : 'SWEEP';
+        sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
+        sweepSub.textContent = '\u00a0';
+      } else if (testMode === 'reverb') {
+        if (!isPlaying) {
+          sweepTitle.textContent = 'PINK';
+          sweepSub.textContent = '\u00a0';
+        } else {
+          sweepTitle.textContent = reverbPhaseIsPink ? 'PINK' : '····';
+          sweepSub.textContent = reverbPhaseIsPink ? '粉噪' : '静音';
+        }
       }
     }
   }
@@ -891,10 +962,13 @@ window.pywebview = window.pywebview || {};
     const checked = document.querySelector('input[name="testMode"]:checked');
     testMode = checked ? checked.value : 'electro';
     const electro = testMode === 'electro';
+    const field = testMode === 'field';
+    const reverb = testMode === 'reverb';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
     document.getElementById('panelField').classList.toggle('hidden', electro);
     document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro);
-    document.getElementById('volumeRowField').classList.toggle('hidden', electro);
+    document.getElementById('volumeRowField').classList.toggle('hidden', !field);
+    document.getElementById('volumeRowReverb').classList.toggle('hidden', !reverb);
     if (electro) {
       volumeSlider.value = volumeSliderField.value;
     } else {
@@ -902,9 +976,14 @@ window.pywebview = window.pywebview || {};
     }
     updateVolumeDisplays();
     updateUI();
-    document.getElementById('hintText').textContent = electro
-      ? '拖拽旋钮或点击调节频率'
-      : '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
+    const hint = document.getElementById('hintText');
+    if (electro) {
+      hint.textContent = '拖拽旋钮或点击调节频率';
+    } else if (field) {
+      hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
+    } else {
+      hint.textContent = '与声场相同的圆环界面。下方设置粉噪与静音时长；播放后周期性交替输出粉噪与静音。';
+    }
   }
 
   document.querySelectorAll('input[name="testMode"]').forEach((r) => {
@@ -912,6 +991,7 @@ window.pywebview = window.pywebview || {};
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.stop_tone();
         isPlaying = false;
+        clearReverbUiTimer();
         updateUI();
       }
       applyModeFromUI();
@@ -923,8 +1003,26 @@ window.pywebview = window.pywebview || {};
     return Math.max(0.5, Math.min(30, v * 0.5));
   }
 
+  function getTimedSliderSec(sliderEl) {
+    const v = parseInt(sliderEl.value, 10);
+    return Math.max(0.5, Math.min(30, v * 0.5));
+  }
+
+  function getPinkDurationSec() {
+    return getTimedSliderSec(document.getElementById('pinkDurationSlider'));
+  }
+
+  function getSilenceDurationSec() {
+    return getTimedSliderSec(document.getElementById('silenceDurationSlider'));
+  }
+
   function updateSweepDurationLabel() {
     document.getElementById('sweepDurationLabel').textContent = getSweepDurationSec().toFixed(1);
+  }
+
+  function updatePinkSilenceLabels() {
+    document.getElementById('pinkDurationLabel').textContent = getPinkDurationSec().toFixed(1);
+    document.getElementById('silenceDurationLabel').textContent = getSilenceDurationSec().toFixed(1);
   }
 
   document.getElementById('sweepDurationSlider').addEventListener('input', () => {
@@ -934,13 +1032,31 @@ window.pywebview = window.pywebview || {};
     }
   });
 
+  document.getElementById('pinkDurationSlider').addEventListener('input', () => {
+    updatePinkSilenceLabels();
+    if (isPlaying && testMode === 'reverb' && window.pywebview && window.pywebview.api) {
+      window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
+      startReverbUiPhaseTimer();
+    }
+  });
+  document.getElementById('silenceDurationSlider').addEventListener('input', () => {
+    updatePinkSilenceLabels();
+    if (isPlaying && testMode === 'reverb' && window.pywebview && window.pywebview.api) {
+      window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
+      startReverbUiPhaseTimer();
+    }
+  });
+
   document.getElementById('btnPlay').addEventListener('click', () => {
     if (isPlaying) return;
     if (!window.pywebview || !window.pywebview.api) return;
     if (testMode === 'electro') {
       window.pywebview.api.start_tone(frequency, currentGain);
-    } else {
+    } else if (testMode === 'field') {
       window.pywebview.api.start_sweep(fLowField, fHighField, currentGain, getSweepDurationSec());
+    } else {
+      window.pywebview.api.start_pink_cycle(getPinkDurationSec(), getSilenceDurationSec(), currentGain);
+      startReverbUiPhaseTimer();
     }
     isPlaying = true;
     updateUI();
@@ -948,6 +1064,7 @@ window.pywebview = window.pywebview || {};
 
   document.getElementById('btnStop').addEventListener('click', () => {
     if (!isPlaying) return;
+    clearReverbUiTimer();
     if (window.pywebview && window.pywebview.api) {
       window.pywebview.api.stop_tone();
     }
@@ -966,6 +1083,7 @@ window.pywebview = window.pywebview || {};
   renderFieldKnob();
   updateVolumeDisplays();
   updateSweepDurationLabel();
+  updatePinkSilenceLabels();
   applyModeFromUI();
 
   window.updateDeviceList = function(devices) {
