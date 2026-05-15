@@ -164,9 +164,27 @@
     line-height: 1.05;
     letter-spacing: 0.04em;
   }
-  #panelField.field-panel-playing .sweep-label {
+  #panelField.field-sweep-active .sweep-label {
     font-size: 1.12rem;
     letter-spacing: 0.02em;
+  }
+  #panelField.reverb-step-mode .sweep-label {
+    font-size: 1.3rem;
+    letter-spacing: 0.035em;
+  }
+  #panelField .knob-wrapper {
+    transition: filter 0.22s ease;
+  }
+  #panelField.reverb-pink-on .knob-wrapper {
+    filter: drop-shadow(0 0 20px rgba(255, 158, 198, 0.55)) drop-shadow(0 0 36px rgba(212, 165, 255, 0.35));
+  }
+  #panelField.reverb-pink-on #fieldKnobSvg .knob-cap {
+    filter: drop-shadow(0 6px 14px rgba(200, 140, 180, 0.35)) drop-shadow(0 0 24px rgba(255, 158, 198, 0.65));
+    transition: filter 0.18s ease;
+  }
+  #panelField.reverb-pink-on #fieldKnobSvg .knob-fill {
+    filter: drop-shadow(0 0 10px rgba(255, 158, 198, 0.45));
+    transition: filter 0.18s ease;
   }
   .sweep-label-unit {
     font-size: 0.75rem;
@@ -981,8 +999,8 @@ window.pywebview = window.pywebview || {};
     const sweepSub = document.getElementById('fieldSweepSub');
     if (panelField && sweepTitle && sweepSub) {
       const fpField = testMode === 'field' && isPlaying;
-      const fpReverb = testMode === 'reverb' && isPlaying;
-      panelField.classList.toggle('field-panel-playing', fpField || fpReverb);
+      panelField.classList.toggle('field-sweep-active', fpField);
+      panelField.classList.toggle('reverb-pink-on', testMode === 'reverb' && isPlaying && reverbPhaseIsPink);
       if (testMode === 'field') {
         sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
         sweepSub.textContent = '\u00a0';
@@ -1000,7 +1018,9 @@ window.pywebview = window.pywebview || {};
     const field = testMode === 'field';
     const reverb = testMode === 'reverb';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
-    document.getElementById('panelField').classList.toggle('hidden', !field && !reverb);
+    const panelField = document.getElementById('panelField');
+    panelField.classList.toggle('hidden', !field && !reverb);
+    panelField.classList.toggle('reverb-step-mode', reverb);
     document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
     document.getElementById('volumeRowField').classList.toggle('hidden', !field);
     if (electro) {
