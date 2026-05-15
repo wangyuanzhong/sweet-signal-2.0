@@ -168,6 +168,38 @@
     font-size: 1.12rem;
     letter-spacing: 0.02em;
   }
+  #panelReverb.reverb-panel-playing .sweep-label {
+    font-size: 1.12rem;
+    letter-spacing: 0.02em;
+  }
+
+  .reverb-top-row {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .reverb-center-wrap {
+    flex: 0 0 220px;
+    width: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .reverb-knob-wrap {
+    margin: 0 auto;
+  }
+  #reverbKnobSvg {
+    pointer-events: none;
+  }
+  #reverbKnobSvg .knob-fill {
+    stroke: url(#knobGradientReverb);
+  }
+  #reverbKnobSvg .knob-cap {
+    fill: url(#capGradientReverb);
+  }
+
   .sweep-label-unit {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -557,6 +589,56 @@
       </div>
     </div>
 
+    <div id="panelReverb" class="hidden">
+      <div class="reverb-top-row">
+        <div class="volume-section volume-half">
+          <div class="section-label">播放时长</div>
+          <div class="volume-control">
+            <div class="slider-wrap">
+              <input type="range" id="pinkDurationSlider" min="1" max="60" value="4" step="1">
+            </div>
+            <div class="volume-value">
+              <span id="pinkDurationLabel">2.0</span><span class="volume-unit">秒</span>
+            </div>
+          </div>
+        </div>
+        <div class="reverb-center-wrap">
+          <div class="knob-wrapper reverb-knob-wrap">
+            <svg class="knob-svg" viewBox="0 0 220 220" id="reverbKnobSvg" aria-hidden="true">
+              <defs>
+                <linearGradient id="knobGradientReverb" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ff9ec6"/>
+                  <stop offset="100%" stop-color="#d4a5ff"/>
+                </linearGradient>
+                <linearGradient id="capGradientReverb" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#fff0f7"/>
+                  <stop offset="100%" stop-color="#ffe4f0"/>
+                </linearGradient>
+              </defs>
+              <path class="knob-track" id="reverbKnobTrack" d=""/>
+              <path class="knob-fill" id="reverbKnobFill" d=""/>
+              <circle class="knob-cap" cx="110" cy="110" r="72"/>
+            </svg>
+            <div class="freq-display">
+              <div class="freq-value sweep-label" id="reverbCenterTitle">PINK</div>
+              <div class="freq-unit sweep-label-unit" id="reverbCenterSub">&nbsp;</div>
+            </div>
+          </div>
+        </div>
+        <div class="volume-section volume-half">
+          <div class="section-label">静音时长</div>
+          <div class="volume-control">
+            <div class="slider-wrap">
+              <input type="range" id="silenceDurationSlider" min="1" max="60" value="2" step="1">
+            </div>
+            <div class="volume-value">
+              <span id="silenceDurationLabel">1.0</span><span class="volume-unit">秒</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="controls-row">
       <div class="output-section">
         <div class="select-icon">🔊</div>
@@ -595,30 +677,6 @@
             </div>
             <div class="volume-value">
               <span id="sweepDurationLabel">4.0</span><span class="volume-unit">秒</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="volumeRowReverb" class="field-sliders-row hidden">
-        <div class="volume-section volume-half">
-          <div class="section-label">粉噪时长</div>
-          <div class="volume-control">
-            <div class="slider-wrap">
-              <input type="range" id="pinkDurationSlider" min="1" max="60" value="4" step="1">
-            </div>
-            <div class="volume-value">
-              <span id="pinkDurationLabel">2.0</span><span class="volume-unit">秒</span>
-            </div>
-          </div>
-        </div>
-        <div class="volume-section volume-half">
-          <div class="section-label">静音时长</div>
-          <div class="volume-control">
-            <div class="slider-wrap">
-              <input type="range" id="silenceDurationSlider" min="1" max="60" value="2" step="1">
-            </div>
-            <div class="volume-value">
-              <span id="silenceDurationLabel">1.0</span><span class="volume-unit">秒</span>
             </div>
           </div>
         </div>
@@ -767,6 +825,16 @@ window.pywebview = window.pywebview || {};
     document.getElementById('fieldKnobLabelHigh').textContent = formatBandEdgeLabel(fHighField);
   }
 
+  function renderReverbStaticKnob() {
+    const trackPath = describeArc(cx, cy, R, startAngle, endAngle);
+    document.getElementById('reverbKnobTrack').setAttribute('d', trackPath);
+    const span = endAngle - startAngle;
+    const fillRatio = 0.72;
+    const currentAngle = startAngle + fillRatio * span;
+    const fillPath = describeArc(cx, cy, R, startAngle, currentAngle);
+    document.getElementById('reverbKnobFill').setAttribute('d', fillPath);
+  }
+
   function applyFieldDragFromEvent(e, svg) {
     const rPoint = getFullArcRatio(e, svg, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
@@ -818,7 +886,7 @@ window.pywebview = window.pywebview || {};
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.set_frequency(frequency);
       }
-    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
+    } else if (dragTarget === 'field-knob' && testMode === 'field') {
       applyFieldDragFromEvent(e, fieldSvg);
     }
   });
@@ -840,7 +908,7 @@ window.pywebview = window.pywebview || {};
         window.pywebview.api.set_frequency(frequency);
       }
       e.preventDefault();
-    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
+    } else if (dragTarget === 'field-knob' && testMode === 'field') {
       applyFieldDragFromEvent(e, fieldSvg);
       e.preventDefault();
     }
@@ -849,13 +917,13 @@ window.pywebview = window.pywebview || {};
   window.addEventListener('touchcancel', () => { dragTarget = null; });
 
   fieldSvg.addEventListener('mousedown', (e) => {
-    if (testMode !== 'field' && testMode !== 'reverb') return;
+    if (testMode !== 'field') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
   });
 
   fieldSvg.addEventListener('touchstart', (e) => {
-    if (testMode !== 'field' && testMode !== 'reverb') return;
+    if (testMode !== 'field') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
     e.preventDefault();
@@ -883,7 +951,7 @@ window.pywebview = window.pywebview || {};
   }
 
   function getActiveVolumeSlider() {
-    return testMode === 'electro' ? volumeSlider : volumeSliderField;
+    return testMode === 'field' ? volumeSliderField : volumeSlider;
   }
 
   function clearReverbUiTimer() {
@@ -941,18 +1009,25 @@ window.pywebview = window.pywebview || {};
     const sweepSub = document.getElementById('fieldSweepSub');
     if (panelField && sweepTitle && sweepSub) {
       const fpField = testMode === 'field' && isPlaying;
-      const fpReverb = testMode === 'reverb' && isPlaying;
-      panelField.classList.toggle('field-panel-playing', fpField || fpReverb);
+      panelField.classList.toggle('field-panel-playing', fpField);
       if (testMode === 'field') {
         sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
         sweepSub.textContent = '\u00a0';
-      } else if (testMode === 'reverb') {
+      }
+    }
+    const panelReverb = document.getElementById('panelReverb');
+    const reverbTitle = document.getElementById('reverbCenterTitle');
+    const reverbSub = document.getElementById('reverbCenterSub');
+    if (panelReverb && reverbTitle && reverbSub) {
+      const pr = testMode === 'reverb' && isPlaying;
+      panelReverb.classList.toggle('reverb-panel-playing', pr);
+      if (testMode === 'reverb') {
         if (!isPlaying) {
-          sweepTitle.textContent = 'PINK';
-          sweepSub.textContent = '\u00a0';
+          reverbTitle.textContent = 'PINK';
+          reverbSub.textContent = '\u00a0';
         } else {
-          sweepTitle.textContent = reverbPhaseIsPink ? 'PINK' : '····';
-          sweepSub.textContent = reverbPhaseIsPink ? '粉噪' : '静音';
+          reverbTitle.textContent = reverbPhaseIsPink ? 'PINK' : '····';
+          reverbSub.textContent = reverbPhaseIsPink ? '粉噪' : '静音';
         }
       }
     }
@@ -965,14 +1040,16 @@ window.pywebview = window.pywebview || {};
     const field = testMode === 'field';
     const reverb = testMode === 'reverb';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
-    document.getElementById('panelField').classList.toggle('hidden', electro);
-    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro);
+    document.getElementById('panelField').classList.toggle('hidden', !field);
+    document.getElementById('panelReverb').classList.toggle('hidden', !reverb);
+    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
     document.getElementById('volumeRowField').classList.toggle('hidden', !field);
-    document.getElementById('volumeRowReverb').classList.toggle('hidden', !reverb);
     if (electro) {
       volumeSlider.value = volumeSliderField.value;
-    } else {
+    } else if (field) {
       volumeSliderField.value = volumeSlider.value;
+    } else {
+      volumeSlider.value = volumeSliderField.value;
     }
     updateVolumeDisplays();
     updateUI();
@@ -982,7 +1059,7 @@ window.pywebview = window.pywebview || {};
     } else if (field) {
       hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
     } else {
-      hint.textContent = '与声场相同的圆环界面。下方设置粉噪与静音时长；播放后周期性交替输出粉噪与静音。';
+      hint.textContent = '左右为粉噪播放与静音时长；中间为状态。下方与电声测试相同：输出设备与输出电平。';
     }
   }
 
@@ -1081,6 +1158,7 @@ window.pywebview = window.pywebview || {};
 
   renderKnob();
   renderFieldKnob();
+  renderReverbStaticKnob();
   updateVolumeDisplays();
   updateSweepDurationLabel();
   updatePinkSilenceLabels();
