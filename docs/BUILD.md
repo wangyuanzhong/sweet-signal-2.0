@@ -50,7 +50,12 @@ cd desktop_app
 python -m PyInstaller --noconfirm SweetSignal.spec
 ```
 
-产出：`desktop_app/dist/SweetSignal.exe`（单文件，无控制台）。
+产出：`desktop_app/dist/SweetSignal.exe`（**单文件 onefile**，无控制台）。分发时只需该 exe；可拷贝到任意路径单独运行（首次冷启动会向 `%TEMP%` 解压内置文件，可能略慢于目录模式）。
+
+### Windows 首次打开与 SmartScreen
+
+- **SmartScreen「已阻止」**：未做 **Authenticode 代码签名** 的下载 exe 常见此提示；同意「仍要运行」后，**第一次**启动可能偏慢（解压 + 信誉检查）。长期方案是对 `SweetSignal.exe` 使用有效代码签名证书发布；或上架 Microsoft Store。
+- **杀毒软件**：首次运行可能实时扫描 PyInstaller 随包 DLL，也会拖慢启动。
 
 ## D. 使用 `build.xml`（需已安装 Ant + Python）
 
@@ -75,7 +80,7 @@ Ant 不负责安装 JDK；仅需本机可同时运行 `python`/`py` + `pip`。
 
 1. 推送至远端后，打开仓库 **Actions**，选择 **「Build Windows exe」**。
 2. 进入最近一次成功的运行摘要页。
-3. 底部 **Artifacts** → 下载 **SweetSignal-Windows**（ZIP 内含 `SweetSignal.exe`）。
+3. 底部 **Artifacts** → 下载 **SweetSignal-Windows**（ZIP 内含 **`SweetSignal.exe`**）。
 4. Artifact 有保留期限（仓库/组织策略决定）；长期分发请再配合 **GitHub Releases**（可在后续 workflow 中增加 tag 触发上传 Release assets）。
 
 触发条件：向 `main`、`master` 或 **`cursor/**`** 的 `push`；向 `main` / `master` 的 `pull_request`；以及 **`workflow_dispatch`**（可在 Actions 页手动运行）。

@@ -93,7 +93,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 32px;
+    flex-wrap: wrap;
+    gap: 18px 22px;
     margin-bottom: 22px;
   }
   .mode-option {
@@ -163,9 +164,37 @@
     line-height: 1.05;
     letter-spacing: 0.04em;
   }
-  #panelField.field-panel-playing .sweep-label {
+  #panelField.field-sweep-active .sweep-label {
     font-size: 1.12rem;
     letter-spacing: 0.02em;
+  }
+  #panelField.reverb-step-mode .sweep-label {
+    font-size: 1.3rem;
+    letter-spacing: 0.035em;
+  }
+  #panelField .knob-wrapper {
+    transition: filter 0.22s ease;
+  }
+  #panelField.reverb-pink-on .knob-wrapper {
+    filter: drop-shadow(0 0 20px rgba(255, 158, 198, 0.55)) drop-shadow(0 0 36px rgba(212, 165, 255, 0.35));
+  }
+  #panelField.reverb-pink-on #fieldKnobSvg .knob-cap {
+    filter: drop-shadow(0 6px 14px rgba(200, 140, 180, 0.35)) drop-shadow(0 0 24px rgba(255, 158, 198, 0.65));
+    transition: filter 0.18s ease;
+  }
+  #panelField.reverb-pink-on #fieldKnobSvg .knob-fill {
+    filter: drop-shadow(0 0 10px rgba(255, 158, 198, 0.45));
+    transition: filter 0.18s ease;
+  }
+  /* 混响播放中的静音段：关闭默认圆钮阴影，与粉噪段高亮形成对比 */
+  #panelField.reverb-silence-phase .knob-wrapper {
+    filter: none;
+  }
+  #panelField.reverb-silence-phase #fieldKnobSvg .knob-cap,
+  #panelField.reverb-silence-phase #fieldKnobSvg .knob-fill,
+  #panelField.reverb-silence-phase #fieldKnobSvg .knob-indicator {
+    filter: none;
+    transition: filter 0.22s ease;
   }
   .sweep-label-unit {
     font-size: 0.75rem;
@@ -524,6 +553,10 @@
         <input type="radio" name="testMode" value="field">
         <span class="mode-dot" aria-hidden="true"></span>声场测试
       </label>
+      <label class="mode-option">
+        <input type="radio" name="testMode" value="reverb">
+        <span class="mode-dot" aria-hidden="true"></span>混响测量
+      </label>
     </div>
 
     <div id="panelElectro">
@@ -593,6 +626,10 @@
           <option value="">默认输出设备</option>
         </select>
       </div>
+      <div id="reverbDurationInputs" class="hidden" aria-hidden="true">
+        <input type="range" id="pinkDurationSlider" min="1" max="60" value="4" step="1">
+        <input type="range" id="silenceDurationSlider" min="1" max="60" value="2" step="1">
+      </div>
       <div id="volumeRowElectro" class="volume-section">
         <div class="section-label">输出电平</div>
         <div class="volume-control">
@@ -656,6 +693,11 @@
   const MIN_DB = -60;
   const MAX_DB = 0;
   let sweepTimer = null;
+  let reverbTimer = null;
+  let pinkNoiseSource = null;
+  let pinkBufferCache = null;
+  let pinkBufferSr = 0;
+  let reverbPhaseIsPink = true;
 
   let testMode = 'electro';
   const MIN_FREQ = 20;
@@ -744,8 +786,82 @@
     return Math.max(0.5, Math.min(30, v * 0.5));
   }
 
+  function getTimedSliderSec(sliderEl) {
+    const v = parseInt(sliderEl.value, 10);
+    return Math.max(0.5, Math.min(30, v * 0.5));
+  }
+
+  const MIN_TIMED_SEC = 0.5;
+  const MAX_TIMED_SEC = 30;
+
+  function secToTimedRatio(sec) {
+    const s = Math.max(MIN_TIMED_SEC, Math.min(MAX_TIMED_SEC, sec));
+    return (s - MIN_TIMED_SEC) / (MAX_TIMED_SEC - MIN_TIMED_SEC);
+  }
+
+  function ratioToTimedSec(r) {
+    const clamped = Math.max(0, Math.min(1, r));
+    return MIN_TIMED_SEC + clamped * (MAX_TIMED_SEC - MIN_TIMED_SEC);
+  }
+
+  function setTimedSliderFromSec(sliderEl, sec) {
+    const steps = Math.round(Math.max(MIN_TIMED_SEC, Math.min(MAX_TIMED_SEC, sec)) / 0.5);
+    sliderEl.value = String(Math.max(1, Math.min(60, steps)));
+  }
+
+  function getPinkSec() {
+    return getTimedSliderSec(document.getElementById('pinkDurationSlider'));
+  }
+
+  function getSilenceSec() {
+    return getTimedSliderSec(document.getElementById('silenceDurationSlider'));
+  }
+
   function updateSweepDurationLabel() {
     document.getElementById('sweepDurationLabel').textContent = getSweepSec().toFixed(1);
+  }
+
+  function updatePinkSilenceLabels() {
+    const pl = document.getElementById('pinkDurationLabel');
+    const sl = document.getElementById('silenceDurationLabel');
+    if (pl) pl.textContent = getPinkSec().toFixed(1);
+    if (sl) sl.textContent = getSilenceSec().toFixed(1);
+  }
+
+  function clearReverbCycle() {
+    if (reverbTimer) {
+      clearTimeout(reverbTimer);
+      reverbTimer = null;
+    }
+  }
+
+  function buildPinkNoiseBuffer(ctx) {
+    const sr = ctx.sampleRate;
+    const dur = 2;
+    const n = Math.floor(sr * dur);
+    const buffer = ctx.createBuffer(1, n, sr);
+    const data = buffer.getChannelData(0);
+    const b = new Float64Array(7);
+    for (let i = 0; i < n; i++) {
+      const white = Math.random() * 2 - 1;
+      b[6] = white * 0.115926;
+      const pink = b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + white * 0.5362;
+      b[0] = 0.99886 * b[0] + white * 0.0555179;
+      b[1] = 0.99332 * b[1] + white * 0.0750759;
+      b[2] = 0.96900 * b[2] + white * 0.1538520;
+      b[3] = 0.86650 * b[3] + white * 0.3104856;
+      b[4] = 0.55000 * b[4] + white * 0.5329522;
+      b[5] = -0.7616 * b[5] - white * 0.0168980;
+      data[i] = Math.max(-1, Math.min(1, pink * 0.11));
+    }
+    return buffer;
+  }
+
+  function getPinkNoiseBuffer(ctx) {
+    if (pinkBufferCache && pinkBufferSr === ctx.sampleRate) return pinkBufferCache;
+    pinkBufferCache = buildPinkNoiseBuffer(ctx);
+    pinkBufferSr = ctx.sampleRate;
+    return pinkBufferCache;
   }
 
   // Log sweep: exponentialRampToValueAtTime on frequency gives equal time per octave (log f vs linear t).
@@ -786,6 +902,12 @@
     const ctx = getAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
     clearSweepTimer();
+    clearReverbCycle();
+    if (pinkNoiseSource) {
+      try { pinkNoiseSource.stop(); } catch (e) {}
+      try { pinkNoiseSource.disconnect(); } catch (e) {}
+      pinkNoiseSource = null;
+    }
 
     if (oscillator) {
       try { oscillator.stop(); } catch (e) {}
@@ -815,6 +937,12 @@
     const ctx = getAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
     clearSweepTimer();
+    clearReverbCycle();
+    if (pinkNoiseSource) {
+      try { pinkNoiseSource.stop(); } catch (e) {}
+      try { pinkNoiseSource.disconnect(); } catch (e) {}
+      pinkNoiseSource = null;
+    }
 
     if (oscillator) {
       try { oscillator.stop(); } catch (e) {}
@@ -840,22 +968,97 @@
     updateUI();
   }
 
+  function startReverb() {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    clearSweepTimer();
+    clearReverbCycle();
+
+    if (oscillator) {
+      try { oscillator.stop(); } catch (e) {}
+      try { oscillator.disconnect(); } catch (e) {}
+      oscillator = null;
+    }
+    if (pinkNoiseSource) {
+      try { pinkNoiseSource.stop(); } catch (e) {}
+      try { pinkNoiseSource.disconnect(); } catch (e) {}
+      pinkNoiseSource = null;
+    }
+    if (gainNode) {
+      try { gainNode.disconnect(); } catch (e) {}
+    }
+
+    const buf = getPinkNoiseBuffer(ctx);
+    pinkNoiseSource = ctx.createBufferSource();
+    pinkNoiseSource.buffer = buf;
+    pinkNoiseSource.loop = true;
+    gainNode = ctx.createGain();
+    pinkNoiseSource.connect(gainNode);
+    connectOutput();
+    pinkNoiseSource.start(0);
+
+    isPlaying = true;
+    reverbPhaseIsPink = true;
+
+    function armSilence() {
+      if (!isPlaying || testMode !== 'reverb' || !gainNode || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      reverbPhaseIsPink = false;
+      updateUI();
+      gainNode.gain.cancelScheduledValues(now);
+      gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.03);
+      const ms = Math.max(80, getSilenceSec() * 1000 - 30);
+      reverbTimer = setTimeout(armPink, ms);
+    }
+
+    function armPink() {
+      if (!isPlaying || testMode !== 'reverb' || !gainNode || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      const tg = sliderToGain(currentGain * 100);
+      reverbPhaseIsPink = true;
+      updateUI();
+      gainNode.gain.cancelScheduledValues(now);
+      gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+      gainNode.gain.linearRampToValueAtTime(tg, now + 0.02);
+      const ms = Math.max(80, getPinkSec() * 1000 - 30);
+      reverbTimer = setTimeout(armSilence, ms);
+    }
+
+    armPink();
+    updateUI();
+  }
+
   function updateGain() {
     if (!gainNode || !audioCtx) return;
+    if (testMode === 'reverb' && !reverbPhaseIsPink) return;
     const targetGain = sliderToGain(currentGain * 100);
     gainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.02);
   }
 
   function stopTone() {
     clearSweepTimer();
-    if (!oscillator || !gainNode || !audioCtx) return;
+    clearReverbCycle();
+    if (pinkNoiseSource) {
+      try { pinkNoiseSource.stop(); } catch (e) {}
+      try { pinkNoiseSource.disconnect(); } catch (e) {}
+      pinkNoiseSource = null;
+    }
+    if (!gainNode || !audioCtx) {
+      oscillator = null;
+      isPlaying = false;
+      updateUI();
+      return;
+    }
     const now = audioCtx.currentTime;
     gainNode.gain.cancelScheduledValues(now);
     gainNode.gain.setValueAtTime(gainNode.gain.value, now);
     gainNode.gain.linearRampToValueAtTime(0, now + 0.05);
     setTimeout(() => {
-      try { oscillator.stop(); } catch (e) {}
-      try { oscillator.disconnect(); } catch (e) {}
+      if (oscillator) {
+        try { oscillator.stop(); } catch (e) {}
+        try { oscillator.disconnect(); } catch (e) {}
+      }
       try { gainNode.disconnect(); } catch (e) {}
       oscillator = null;
       gainNode = null;
@@ -876,11 +1079,20 @@
     }
     const panelField = document.getElementById('panelField');
     const sweepTitle = document.getElementById('fieldSweepTitle');
-    if (panelField && sweepTitle) {
-      const fp = testMode === 'field' && isPlaying;
-      panelField.classList.toggle('field-panel-playing', fp);
+    const sweepSub = document.getElementById('fieldSweepSub');
+    if (panelField && sweepTitle && sweepSub) {
+      const fpField = testMode === 'field' && isPlaying;
+      panelField.classList.toggle('field-sweep-active', fpField);
+      const reverbPinkGlow = testMode === 'reverb' && isPlaying && reverbPhaseIsPink;
+      const reverbSilenceDim = testMode === 'reverb' && isPlaying && !reverbPhaseIsPink;
+      panelField.classList.toggle('reverb-pink-on', reverbPinkGlow);
+      panelField.classList.toggle('reverb-silence-phase', reverbSilenceDim);
       if (testMode === 'field') {
-        sweepTitle.textContent = fp ? 'SWEEPING.' : 'SWEEP';
+        sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
+        sweepSub.textContent = '\u00a0';
+      } else if (testMode === 'reverb') {
+        sweepTitle.textContent = 'STEP';
+        sweepSub.textContent = !isPlaying ? '\u00a0' : (reverbPhaseIsPink ? '粉噪' : '静音');
       }
     }
   }
@@ -929,9 +1141,31 @@
     return Math.round(f) + ' Hz';
   }
 
+  function formatSecKnobLabel(sec) {
+    return sec.toFixed(1) + ' s';
+  }
+
   function renderFieldKnob() {
     document.getElementById('fieldKnobTrack').setAttribute('d', describeArc(cx, cy, R, startAngle, endAngle));
     const span = endAngle - startAngle;
+    if (testMode === 'reverb') {
+      const rP = secToTimedRatio(getPinkSec());
+      const rS = secToTimedRatio(getSilenceSec());
+      const anglePlay = startAngle + rP * span;
+      const angleSil = startAngle + rS * span;
+      const a0 = Math.min(anglePlay, angleSil);
+      const a1 = Math.max(anglePlay, angleSil);
+      document.getElementById('fieldKnobFill').setAttribute('d', describeArc(cx, cy, R, a0, a1));
+      const il = polar(cx, cy, capR - 18, anglePlay);
+      const ih = polar(cx, cy, capR - 18, angleSil);
+      document.getElementById('fieldIndLow').setAttribute('cx', il.x);
+      document.getElementById('fieldIndLow').setAttribute('cy', il.y);
+      document.getElementById('fieldIndHigh').setAttribute('cx', ih.x);
+      document.getElementById('fieldIndHigh').setAttribute('cy', ih.y);
+      document.getElementById('fieldKnobLabelLow').textContent = formatSecKnobLabel(getPinkSec());
+      document.getElementById('fieldKnobLabelHigh').textContent = formatSecKnobLabel(getSilenceSec());
+      return;
+    }
     const rL = freqToRatio(fLowField);
     const rH = freqToRatio(fHighField);
     const angleLow = startAngle + rL * span;
@@ -952,6 +1186,20 @@
   function applyFieldDragFromEvent(e, svgEl) {
     const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
+    if (testMode === 'reverb') {
+      const secPoint = ratioToTimedSec(rPoint);
+      const pinkEl = document.getElementById('pinkDurationSlider');
+      const silEl = document.getElementById('silenceDurationSlider');
+      if (fieldDragSide === 'low') {
+        setTimedSliderFromSec(pinkEl, secPoint);
+      } else {
+        setTimedSliderFromSec(silEl, secPoint);
+      }
+      updatePinkSilenceLabels();
+      renderFieldKnob();
+      restartReverbIfPlaying();
+      return;
+    }
     const fPoint = ratioToFreq(rPoint);
     if (fieldDragSide === 'low') {
       fLowField = Math.min(fPoint, fHighField);
@@ -967,6 +1215,23 @@
   function pickFieldHandleFromPointer(e, svgEl) {
     const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
+    if (testMode === 'reverb') {
+      const rPlay = secToTimedRatio(getPinkSec());
+      const rSil = secToTimedRatio(getSilenceSec());
+      const pinkEl = document.getElementById('pinkDurationSlider');
+      const silEl = document.getElementById('silenceDurationSlider');
+      if (Math.abs(rPoint - rPlay) <= Math.abs(rPoint - rSil)) {
+        fieldDragSide = 'low';
+        setTimedSliderFromSec(pinkEl, ratioToTimedSec(rPoint));
+      } else {
+        fieldDragSide = 'high';
+        setTimedSliderFromSec(silEl, ratioToTimedSec(rPoint));
+      }
+      updatePinkSilenceLabels();
+      renderFieldKnob();
+      restartReverbIfPlaying();
+      return;
+    }
     const rLow = freqToRatio(fLowField);
     const rHigh = freqToRatio(fHighField);
     const fPoint = ratioToFreq(rPoint);
@@ -990,7 +1255,7 @@
   window.addEventListener('mousemove', (e) => {
     if (dragTarget === 'electro-knob') {
       setFrequencyFromRatio(getFullArcRatio(e, svg, knobRatio));
-    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
     }
   });
@@ -1005,7 +1270,7 @@
     if (dragTarget === 'electro-knob') {
       setFrequencyFromRatio(getFullArcRatio(e, svg, knobRatio));
       e.preventDefault();
-    } else if (dragTarget === 'field-knob' && testMode === 'field') {
+    } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
       e.preventDefault();
     }
@@ -1014,13 +1279,13 @@
   window.addEventListener('touchcancel', () => { dragTarget = null; });
 
   fieldSvg.addEventListener('mousedown', (e) => {
-    if (testMode !== 'field') return;
+    if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
   });
 
   fieldSvg.addEventListener('touchstart', (e) => {
-    if (testMode !== 'field') return;
+    if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
     e.preventDefault();
@@ -1030,7 +1295,19 @@
   const volumeSliderField = document.getElementById('volumeSliderField');
 
   function getActiveVolumeSlider() {
-    return testMode === 'electro' ? volumeSlider : volumeSliderField;
+    return testMode === 'field' ? volumeSliderField : volumeSlider;
+  }
+
+  function restartReverbIfPlaying() {
+    if (isPlaying && testMode === 'reverb') {
+      clearReverbCycle();
+      if (pinkNoiseSource && gainNode && audioCtx) {
+        const now = audioCtx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0, now);
+      }
+      startReverb();
+    }
   }
 
   function syncVolumeSliders(source) {
@@ -1064,24 +1341,47 @@
     }
   });
 
+  document.getElementById('pinkDurationSlider').addEventListener('input', () => {
+    updatePinkSilenceLabels();
+    renderFieldKnob();
+    restartReverbIfPlaying();
+  });
+  document.getElementById('silenceDurationSlider').addEventListener('input', () => {
+    updatePinkSilenceLabels();
+    renderFieldKnob();
+    restartReverbIfPlaying();
+  });
+
   function applyModeFromUI() {
     const checked = document.querySelector('input[name="testMode"]:checked');
     testMode = checked ? checked.value : 'electro';
     const electro = testMode === 'electro';
+    const field = testMode === 'field';
+    const reverb = testMode === 'reverb';
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
-    document.getElementById('panelField').classList.toggle('hidden', electro);
-    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro);
-    document.getElementById('volumeRowField').classList.toggle('hidden', electro);
+    const panelField = document.getElementById('panelField');
+    panelField.classList.toggle('hidden', !field && !reverb);
+    panelField.classList.toggle('reverb-step-mode', reverb);
+    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
+    document.getElementById('volumeRowField').classList.toggle('hidden', !field);
     if (electro) {
       volumeSlider.value = volumeSliderField.value;
-    } else {
+    } else if (field) {
       volumeSliderField.value = volumeSlider.value;
+    } else {
+      volumeSlider.value = volumeSliderField.value;
     }
     updateVolumeDisplays();
+    renderFieldKnob();
     updateUI();
-    document.getElementById('hintText').textContent = electro
-      ? '拖拽旋钮或点击调节频率'
-      : '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
+    const hint = document.getElementById('hintText');
+    if (electro) {
+      hint.textContent = '拖拽旋钮或点击调节频率';
+    } else if (field) {
+      hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
+    } else {
+      hint.textContent = '与声场相同的双弧圆钮：两枚触点分别调粉噪播放时长与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
+    }
   }
 
   document.querySelectorAll('input[name="testMode"]').forEach((r) => {
@@ -1097,8 +1397,10 @@
     testMode = mode;
     if (mode === 'electro') {
       startTone(frequency);
-    } else {
+    } else if (mode === 'field') {
       startSweep();
+    } else {
+      startReverb();
     }
   });
 
@@ -1208,6 +1510,7 @@
   renderFieldKnob();
   updateVolumeDisplays();
   updateSweepDurationLabel();
+  updatePinkSilenceLabels();
   applyModeFromUI();
 })();
 </script>

@@ -57,9 +57,11 @@ cd desktop_app && python -m PyInstaller --noconfirm SweetSignal.spec
 
 1. 在 GitHub 打开本仓库 → 标签栏选择 **Actions**。
 2. 点开 **「Build Windows exe」** 工作流最近一次 **绿色**运行记录。
-3. 在运行摘要页底部 **Artifacts** 区域下载 **SweetSignal-Windows**（ZIP，内含 **`SweetSignal.exe`**）。
+3. 在运行摘要页底部 **Artifacts** 区域下载 **SweetSignal-Windows**（ZIP，内含单个 **`SweetSignal.exe`**；解压后即可运行，可将 exe 拷贝到任意目录单独使用）。
 
-> Artifact 默认有 **过期时间**（由仓库/组织策略决定）。若需要长期、带版本号的公开下载链接，建议在后续迭代中增加 **tag 触发 Release**，将 `SweetSignal.exe` 上传到 **GitHub Releases**（需在 workflow 中加 `GITHUB_TOKEN` 写权限的步骤）。
+> **首次打开偏慢 / SmartScreen**：未签名的下载应用可能被 Windows SmartScreen 提示；同意运行后系统仍会做信誉扫描。**单文件 exe** 首次冷启动会向 `%TEMP%` 解压内置文件，可能比目录分发略慢。若需尽量消除拦截，需自行配置 **代码签名证书** 对可执行文件签名。详见 **[`docs/BUILD.md`](docs/BUILD.md)**「Windows 首次打开与 SmartScreen」。
+
+> Artifact 默认有 **过期时间**（由仓库/组织策略决定）。若需要长期、带版本号的公开下载链接，建议在后续迭代中增加 **tag 触发 Release**，将构建 ZIP 上传到 **GitHub Releases**（需在 workflow 中加 `GITHUB_TOKEN` 写权限的步骤）。
 
 ---
 

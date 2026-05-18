@@ -8,12 +8,18 @@ import json
 class AudioEngine:
     def __init__(self):
         self.is_playing = False
-        self.mode = "tone"  # "tone" | "sweep"
+        self.mode = "tone"  # "tone" | "sweep" | "pink_cycle"
         self.frequency = 1000.0
         self.sweep_low = 100.0
         self.sweep_high = 10000.0
         self.sweep_duration = 4.0
         self._sweep_sample_pos = 0
+        self.pink_noise_duration = 2.0
+        self.silence_duration = 1.0
+        self._pink_cycle_pos = 0
+        self._pink_lut_pos = 0
+        self._pink_lut = None
+        self._pink_lut_sr = 0
         self.volume = 0.85
         self.last_db = -1.4
         self.sample_rate = 48000
@@ -28,6 +34,14 @@ class AudioEngine:
             x = float(sec)
         except (TypeError, ValueError):
             return 4.0
+        return max(0.5, min(30.0, x))
+
+    @staticmethod
+    def _clamp_pink_silence_sec(sec):
+        try:
+            x = float(sec)
+        except (TypeError, ValueError):
+            return 2.0
         return max(0.5, min(30.0, x))
 
     @staticmethod
@@ -79,7 +93,7 @@ class AudioEngine:
             phases = self.phase + np.arange(frames) * phase_increment
             self.phase = (phases[-1] + phase_increment) % (2 * np.pi)
             samples = np.sin(phases) * vol
-        else:
+        elif mode == "sweep":
             f0 = max(20.0, min(f_low, f_high))
             f1 = max(f0, min(20000.0, max(f_low, f_high)))
             T = max(0.05, float(sweep_T))
@@ -101,10 +115,61 @@ class AudioEngine:
             phi_arr = self.phase + np.cumsum(dphi)
             samples = np.sin(phi_arr) * vol
             self.phase = float(phi_arr[-1] % (2 * np.pi))
+        elif mode == "pink_cycle":
+            # alternating pink noise and silence
+            with self.lock:
+                Tp = max(1, int(self.pink_noise_duration * sr))
+                Ts = max(1, int(self.silence_duration * sr))
+                cpos = self._pink_cycle_pos
+                lpos = self._pink_lut_pos
+            cycle_len = Tp + Ts
+            lut = self._ensure_pink_lut(sr)
+            lutlen = len(lut)
+            out1d = np.zeros(frames, dtype=np.float32)
+            for i in range(frames):
+                pos = (cpos + i) % cycle_len
+                if pos < Tp:
+                    out1d[i] = float(lut[lpos % lutlen]) * vol
+                    lpos += 1
+            with self.lock:
+                self._pink_cycle_pos = (cpos + frames) % cycle_len
+                self._pink_lut_pos = lpos
+            samples = out1d
+        else:
+            samples = np.zeros(frames, dtype=np.float32)
 
         outdata[:, 0] = samples
         outdata[:, 1] = samples
     
+    def _generate_pink_lut(self, sample_rate):
+        n = int(sample_rate * 12)
+        b = np.zeros(7, dtype=np.float64)
+        out = np.empty(n, dtype=np.float32)
+        for i in range(n):
+            white = float(np.random.uniform(-1.0, 1.0))
+            b[6] = white * 0.115926
+            pink = float(b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + white * 0.5362)
+            b[0] = 0.99886 * b[0] + white * 0.0555179
+            b[1] = 0.99332 * b[1] + white * 0.0750759
+            b[2] = 0.96900 * b[2] + white * 0.1538520
+            b[3] = 0.86650 * b[3] + white * 0.3104856
+            b[4] = 0.55000 * b[4] + white * 0.5329522
+            b[5] = -0.7616 * b[5] - white * 0.0168980
+            v = pink * 0.11
+            if v > 1.0:
+                v = 1.0
+            elif v < -1.0:
+                v = -1.0
+            out[i] = v
+        return out
+
+    def _ensure_pink_lut(self, sample_rate):
+        if self._pink_lut is not None and self._pink_lut_sr == sample_rate:
+            return self._pink_lut
+        self._pink_lut = self._generate_pink_lut(sample_rate)
+        self._pink_lut_sr = sample_rate
+        return self._pink_lut
+
     def db_to_gain(self, db):
         """将 dB 转换为线性增益"""
         return 10 ** (db / 20)
@@ -180,6 +245,52 @@ class AudioEngine:
             print(f"启动扫频失败: {e}")
             return False
 
+    def start_pink_cycle(self, pink_sec, silence_sec, db):
+        """混响测量：周期性粉噪 + 静音。"""
+        with self.lock:
+            self.mode = "pink_cycle"
+            self.pink_noise_duration = self._clamp_pink_silence_sec(pink_sec)
+            self.silence_duration = self._clamp_pink_silence_sec(silence_sec)
+            self.volume = self.db_to_gain(db)
+            self.last_db = float(db)
+            self.phase = 0.0
+            self._sweep_sample_pos = 0
+            self._pink_cycle_pos = 0
+            self._pink_lut_pos = 0
+
+        if self.stream is not None:
+            self.stop()
+
+        try:
+            out_idx = self._effective_output_device()
+            sample_rate = self._samplerate_for_device(out_idx)
+
+            with self.lock:
+                self.sample_rate = sample_rate
+
+            self.stream = sd.OutputStream(
+                samplerate=sample_rate,
+                channels=2,
+                dtype=np.float32,
+                device=out_idx,
+                callback=self.callback,
+                blocksize=2048,
+            )
+            self.stream.start()
+            self.is_playing = True
+            return True
+        except Exception as e:
+            print(f"启动粉噪周期失败: {e}")
+            return False
+
+    def set_pink_durations(self, pink_sec, silence_sec):
+        with self.lock:
+            if self.mode != "pink_cycle":
+                return
+            self.pink_noise_duration = self._clamp_pink_silence_sec(pink_sec)
+            self.silence_duration = self._clamp_pink_silence_sec(silence_sec)
+            self._pink_cycle_pos = 0
+
     def stop(self):
         self.is_playing = False
         if self.stream is not None:
@@ -228,6 +339,10 @@ class AudioEngine:
                 f_lo = self.sweep_low
                 f_hi = self.sweep_high
                 self.start_sweep(f_lo, f_hi, db, None)
+            elif mode == "pink_cycle":
+                pk = self.pink_noise_duration
+                sl = self.silence_duration
+                self.start_pink_cycle(pk, sl, db)
             else:
                 self.start(self.frequency, db)
     
@@ -257,6 +372,14 @@ class Api:
     def start_sweep(self, f_low, f_high, volume, duration_sec=None):
         """开始播放对数扫频（从 f_low 到 f_high，循环）。duration_sec 单次扫频时长（秒），默认沿用引擎当前值。"""
         return self.audio.start_sweep(f_low, f_high, volume, duration_sec)
+
+    def start_pink_cycle(self, pink_sec, silence_sec, volume):
+        """混响测量：粉噪与静音交替循环（时长单位：秒，volume 为 dB）。"""
+        return self.audio.start_pink_cycle(pink_sec, silence_sec, volume)
+
+    def set_pink_durations(self, pink_sec, silence_sec):
+        """混响测量：播放中调整粉噪/静音时长。"""
+        self.audio.set_pink_durations(pink_sec, silence_sec)
 
     def set_sweep_duration(self, duration_sec):
         """声场模式：调整单次扫频时长（秒）"""
