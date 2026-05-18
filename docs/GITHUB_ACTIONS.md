@@ -9,7 +9,8 @@
 ## 功能性需求（Functional）
 
 1. **触发**  
-   - `push`、`pull_request` 至 **`main`** 或 **`master`** 时触发构建。  
+   - `push` 至 **`main`**、**`master`** 或 **`cursor/**`**（例如 Cursor Cloud 工作分支）时触发构建。  
+   - `pull_request` 至 **`main`** 或 **`master`** 时触发构建。  
    - 支持 **`workflow_dispatch`**（人工在 Actions 界面「Run workflow」）。
 
 2. **运行环境**  

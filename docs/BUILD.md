@@ -83,7 +83,7 @@ Ant 不负责安装 JDK；仅需本机可同时运行 `python`/`py` + `pip`。
 3. 底部 **Artifacts** → 下载 **SweetSignal-Windows**（ZIP 内含 **`SweetSignal.exe`**）。
 4. Artifact 有保留期限（仓库/组织策略决定）；长期分发请再配合 **GitHub Releases**（可在后续 workflow 中增加 tag 触发上传 Release assets）。
 
-触发条件：`push` / `pull_request` 至 `main` 或 `master`，以及 **`workflow_dispatch`**（可手动在工作流页运行）。
+触发条件：向 `main`、`master` 或 **`cursor/**`** 的 `push`；向 `main` / `master` 的 `pull_request`；以及 **`workflow_dispatch`**（可在 Actions 页手动运行）。
 
 ## 常见问题
 
