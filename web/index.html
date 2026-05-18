@@ -1,25 +1,140 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="theme-electro">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sweet Signal Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg-top: #fff0f5;
-    --bg-bottom: #e6f7ff;
-    --card-bg: rgba(255, 255, 255, 0.55);
-    --card-border: rgba(255, 255, 255, 0.8);
-    --text-main: #5a4a6a;
-    --text-muted: #9b8aa5;
-    --accent-pink: #ff9ec6;
-    --accent-mint: #a8e6cf;
-    --accent-lavender: #d4a5ff;
-    --accent-cream: #ffd3b6;
-    --accent-sky: #a0d8ef;
-    --shadow-soft: 0 12px 40px rgba(150, 120, 160, 0.12);
+  /* Mode themes: macaron triads per frontend-design skill (color + spatial tokens). */
+  html.theme-electro {
+    --bg-top: #fff4f8;
+    --bg-bottom: #eaf8f2;
+    --card-bg: rgba(255, 252, 254, 0.58);
+    --card-border: rgba(255, 255, 255, 0.82);
+    --text-main: #574858;
+    --text-muted: #94899e;
+    --accent-pink: #ffb8d9;
+    --accent-mint: #b0efd9;
+    --accent-lavender: #d8c4ff;
+    --accent-cream: #ffdac4;
+    --accent-sky: #b8e8f5;
+    --shadow-soft: 0 12px 40px rgba(155, 130, 165, 0.12);
     --shadow-inset: inset 0 2px 8px rgba(150, 120, 160, 0.08);
+    --knob-0: #ffb8d9;
+    --knob-1: #d8c4ff;
+    --cap-0: #fff9fc;
+    --cap-1: #ffe8f3;
+    --icon-stop-end: #ffa7cf;
+    --select-focus-ring: rgba(216, 196, 255, 0.38);
+    --slider-0: #ffb8d9;
+    --slider-1: #d8c4ff;
+    --btn-play-1: #8fdcc4;
+    --btn-playing-0: #ffd8bf;
+    --btn-playing-1: #ffc4a8;
+    --btn-stop-0: #ffb8ce;
+    --btn-stop-1: #ffa3be;
+    --device-box-0: rgba(255, 185, 215, 0.18);
+    --device-box-1: rgba(216, 196, 255, 0.18);
+    --device-border: rgba(234, 150, 180, 0.45);
+    --perm-btn-shadow: rgba(200, 140, 185, 0.3);
+    --perm-btn-text: #ffffff;
+    --mode-dot-ring: #ffb8d9;
+    --mode-dot-glow: rgba(255, 190, 215, 0.4);
+    --mode-dot-core-mint: #b0efd9;
+    --thumb-shadow: rgba(145, 120, 155, 0.35);
+    --reverb-glow-a: rgba(255, 175, 205, 0.52);
+    --reverb-glow-b: rgba(210, 185, 235, 0.38);
+    --reverb-glow-cap: rgba(255, 170, 200, 0.62);
+    --reverb-glow-fill: rgba(255, 175, 205, 0.42);
+    --knob-cap-shadow: rgba(195, 145, 175, 0.28);
+    --knob-ind-shadow: rgba(145, 120, 155, 0.22);
+  }
+  html.theme-field {
+    --bg-top: #fffbea;
+    --bg-bottom: #e5f8fb;
+    --card-bg: rgba(255, 254, 250, 0.62);
+    --card-border: rgba(255, 255, 255, 0.85);
+    --text-main: #544a40;
+    --text-muted: #918878;
+    --accent-pink: #ffe9a8;
+    --accent-mint: #a6e8f0;
+    --accent-lavender: #ffd4b8;
+    --accent-cream: #fff3c4;
+    --accent-sky: #c4f1f8;
+    --shadow-soft: 0 12px 38px rgba(175, 155, 120, 0.11);
+    --shadow-inset: inset 0 2px 8px rgba(170, 150, 130, 0.07);
+    --knob-0: #ffe78f;
+    --knob-1: #9ee4ed;
+    --cap-0: #fffffb;
+    --cap-1: #fff5dc;
+    --icon-stop-end: #ffd27a;
+    --select-focus-ring: rgba(166, 232, 240, 0.42);
+    --slider-0: #ffe78f;
+    --slider-1: #9ee4ed;
+    --btn-play-1: #7bd4e0;
+    --btn-playing-0: #ffd9a8;
+    --btn-playing-1: #ffc48a;
+    --btn-stop-0: #ffc4a3;
+    --btn-stop-1: #ffb088;
+    --device-box-0: rgba(255, 231, 143, 0.22);
+    --device-box-1: rgba(158, 228, 237, 0.2);
+    --device-border: rgba(230, 190, 120, 0.45);
+    --perm-btn-shadow: rgba(200, 160, 120, 0.28);
+    --perm-btn-text: #4a3f32;
+    --mode-dot-ring: #f5d78a;
+    --mode-dot-glow: rgba(255, 228, 150, 0.45);
+    --mode-dot-core-mint: #9ee4ed;
+    --thumb-shadow: rgba(150, 135, 110, 0.32);
+    --reverb-glow-a: rgba(255, 210, 160, 0.5);
+    --reverb-glow-b: rgba(158, 228, 237, 0.35);
+    --reverb-glow-cap: rgba(255, 200, 140, 0.55);
+    --reverb-glow-fill: rgba(255, 215, 170, 0.42);
+    --knob-cap-shadow: rgba(200, 165, 120, 0.26);
+    --knob-ind-shadow: rgba(145, 130, 105, 0.22);
+  }
+  html.theme-reverb {
+    --bg-top: #f0f4ff;
+    --bg-bottom: #fff5f9;
+    --card-bg: rgba(255, 252, 254, 0.58);
+    --card-border: rgba(255, 255, 255, 0.84);
+    --text-main: #484e66;
+    --text-muted: #878ca3;
+    --accent-pink: #c8d6ff;
+    --accent-mint: #ffc8da;
+    --accent-lavender: #ffd9c6;
+    --accent-cream: #ffe8f0;
+    --accent-sky: #dbe6ff;
+    --shadow-soft: 0 12px 40px rgba(130, 140, 185, 0.12);
+    --shadow-inset: inset 0 2px 8px rgba(130, 135, 170, 0.08);
+    --knob-0: #c4d4ff;
+    --knob-1: #ffb8d4;
+    --cap-0: #faf8ff;
+    --cap-1: #ffeef6;
+    --icon-stop-end: #b8c8ff;
+    --select-focus-ring: rgba(200, 212, 255, 0.45);
+    --slider-0: #c4d4ff;
+    --slider-1: #ffb8d4;
+    --btn-play-1: #ffa3c2;
+    --btn-playing-0: #ffd9c8;
+    --btn-playing-1: #ffc4b0;
+    --btn-stop-0: #d0bfff;
+    --btn-stop-1: #c0b0ff;
+    --device-box-0: rgba(196, 212, 255, 0.2);
+    --device-box-1: rgba(255, 200, 220, 0.18);
+    --device-border: rgba(180, 195, 240, 0.45);
+    --perm-btn-shadow: rgba(150, 155, 200, 0.28);
+    --perm-btn-text: #ffffff;
+    --mode-dot-ring: #c4d4ff;
+    --mode-dot-glow: rgba(190, 205, 255, 0.42);
+    --mode-dot-core-mint: #ffc8da;
+    --thumb-shadow: rgba(120, 130, 175, 0.32);
+    --reverb-glow-a: rgba(255, 185, 210, 0.52);
+    --reverb-glow-b: rgba(200, 210, 255, 0.38);
+    --reverb-glow-cap: rgba(255, 175, 205, 0.6);
+    --reverb-glow-fill: rgba(255, 185, 215, 0.42);
+    --knob-cap-shadow: rgba(150, 155, 195, 0.26);
+    --knob-ind-shadow: rgba(120, 125, 160, 0.22);
   }
 
   * {
@@ -128,9 +243,9 @@
   }
   .mode-option:hover .mode-dot { transform: scale(1.06); }
   .mode-option input:checked + .mode-dot {
-    border-color: #ff9ec6;
-    box-shadow: 0 0 0 4px rgba(255, 158, 198, 0.32);
-    background: radial-gradient(circle at 50% 50%, #a8e6cf 0 45%, #ffffff 46% 100%);
+    border-color: var(--mode-dot-ring);
+    box-shadow: 0 0 0 4px var(--mode-dot-glow);
+    background: radial-gradient(circle at 50% 50%, var(--mode-dot-core-mint) 0 45%, #ffffff 46% 100%);
   }
 
   .hidden { display: none !important; }
@@ -176,14 +291,14 @@
     transition: filter 0.22s ease;
   }
   #panelField.reverb-pink-on .knob-wrapper {
-    filter: drop-shadow(0 0 20px rgba(255, 158, 198, 0.55)) drop-shadow(0 0 36px rgba(212, 165, 255, 0.35));
+    filter: drop-shadow(0 0 20px var(--reverb-glow-a)) drop-shadow(0 0 36px var(--reverb-glow-b));
   }
   #panelField.reverb-pink-on #fieldKnobSvg .knob-cap {
-    filter: drop-shadow(0 6px 14px rgba(200, 140, 180, 0.35)) drop-shadow(0 0 24px rgba(255, 158, 198, 0.65));
+    filter: drop-shadow(0 6px 14px var(--knob-cap-shadow)) drop-shadow(0 0 24px var(--reverb-glow-cap));
     transition: filter 0.18s ease;
   }
   #panelField.reverb-pink-on #fieldKnobSvg .knob-fill {
-    filter: drop-shadow(0 0 10px rgba(255, 158, 198, 0.45));
+    filter: drop-shadow(0 0 10px var(--reverb-glow-fill));
     transition: filter 0.18s ease;
   }
   /* 混响播放中的静音段：关闭默认圆钮阴影，与粉噪段高亮形成对比 */
@@ -202,6 +317,14 @@
     font-weight: 600;
     margin-top: 4px;
     opacity: 0.35;
+  }
+
+  .mode-knob-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 308px;
+    justify-content: flex-start;
   }
 
   .knob-wrapper {
@@ -235,12 +358,12 @@
   }
   .knob-cap {
     fill: url(#capGradient);
-    filter: drop-shadow(0 6px 14px rgba(200, 140, 180, 0.25));
+    filter: drop-shadow(0 6px 14px var(--knob-cap-shadow));
     transition: transform 0.08s ease-out;
   }
   .knob-indicator {
     fill: #ffffff;
-    filter: drop-shadow(0 2px 4px rgba(150, 120, 160, 0.2));
+    filter: drop-shadow(0 2px 4px var(--knob-ind-shadow));
   }
 
   .freq-display {
@@ -250,6 +373,12 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 5.25rem;
+    width: 9rem;
   }
   .freq-value {
     font-family: 'Nunito', sans-serif;
@@ -324,7 +453,7 @@
     justify-content: center;
     flex-shrink: 0;
     font-size: 0.9rem;
-    background: linear-gradient(135deg, var(--accent-pink), #ff85b8);
+    background: linear-gradient(135deg, var(--accent-pink), var(--icon-stop-end));
   }
 
   select {
@@ -349,7 +478,7 @@
   }
   select:focus {
     border-color: var(--accent-lavender);
-    box-shadow: 0 0 0 3px rgba(212, 165, 255, 0.2);
+    box-shadow: 0 0 0 3px var(--select-focus-ring);
   }
 
   .volume-control {
@@ -371,7 +500,7 @@
     appearance: none;
     width: 100%;
     height: 8px;
-    background: linear-gradient(90deg, var(--accent-pink), var(--accent-lavender));
+    background: linear-gradient(90deg, var(--slider-0), var(--slider-1));
     border-radius: 4px;
     outline: none;
     cursor: pointer;
@@ -384,7 +513,7 @@
     height: 20px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(150, 120, 160, 0.35);
+    box-shadow: 0 2px 8px var(--thumb-shadow);
     cursor: pointer;
     transition: transform 0.15s;
   }
@@ -396,7 +525,7 @@
     height: 20px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(150, 120, 160, 0.35);
+    box-shadow: 0 2px 8px var(--thumb-shadow);
     cursor: pointer;
     border: none;
   }
@@ -449,16 +578,16 @@
   }
 
   .btn-play {
-    background: linear-gradient(135deg, var(--accent-mint), #88dfc2);
+    background: linear-gradient(135deg, var(--accent-mint), var(--btn-play-1));
     box-shadow: 0 6px 20px rgba(140, 220, 180, 0.35);
   }
   .btn-play.playing {
-    background: linear-gradient(135deg, #ffd3b6, #ffb899);
+    background: linear-gradient(135deg, var(--btn-playing-0), var(--btn-playing-1));
     box-shadow: 0 6px 20px rgba(255, 180, 150, 0.35);
   }
 
   .btn-stop {
-    background: linear-gradient(135deg, #ffb6c1, #ff9eb0);
+    background: linear-gradient(135deg, var(--btn-stop-0), var(--btn-stop-1));
     box-shadow: 0 6px 20px rgba(255, 150, 170, 0.35);
   }
 
@@ -490,8 +619,8 @@
   .device-permission {
     margin-top: 14px;
     padding: 12px 16px;
-    background: linear-gradient(135deg, rgba(255, 158, 198, 0.15), rgba(212, 165, 255, 0.15));
-    border: 1px dashed rgba(255, 158, 198, 0.4);
+    background: linear-gradient(135deg, var(--device-box-0), var(--device-box-1));
+    border: 1px dashed var(--device-border);
     border-radius: 14px;
     text-align: center;
     animation: fadeIn 0.4s ease;
@@ -503,16 +632,16 @@
     margin-bottom: 8px;
   }
   .perm-btn {
-    background: linear-gradient(135deg, var(--accent-pink), var(--accent-lavender));
+    background: linear-gradient(135deg, var(--knob-0), var(--knob-1));
     border: none;
     border-radius: 12px;
     padding: 8px 18px;
-    color: #fff;
+    color: var(--perm-btn-text);
     font-family: 'Nunito', sans-serif;
     font-weight: 700;
     font-size: 0.8rem;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(212, 140, 200, 0.3);
+    box-shadow: 0 4px 14px var(--perm-btn-shadow);
     transition: transform 0.15s, filter 0.15s;
   }
   .perm-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
@@ -559,17 +688,17 @@
       </label>
     </div>
 
-    <div id="panelElectro">
+    <div id="panelElectro" class="mode-knob-panel">
       <div class="knob-wrapper">
         <svg class="knob-svg" viewBox="0 0 220 220" id="knobSvg">
           <defs>
             <linearGradient id="knobGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ff9ec6"/>
-              <stop offset="100%" stop-color="#d4a5ff"/>
+              <stop offset="0%" stop-color="var(--knob-0)"/>
+              <stop offset="100%" stop-color="var(--knob-1)"/>
             </linearGradient>
             <linearGradient id="capGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#fff0f7"/>
-              <stop offset="100%" stop-color="#ffe4f0"/>
+              <stop offset="0%" stop-color="var(--cap-0)"/>
+              <stop offset="100%" stop-color="var(--cap-1)"/>
             </linearGradient>
           </defs>
           <path class="knob-track" id="knobTrack" d=""/>
@@ -588,17 +717,17 @@
       </div>
     </div>
 
-    <div id="panelField" class="hidden">
+    <div id="panelField" class="mode-knob-panel hidden">
       <div class="knob-wrapper">
         <svg class="knob-svg" viewBox="0 0 220 220" id="fieldKnobSvg">
           <defs>
             <linearGradient id="knobGradientField" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ff9ec6"/>
-              <stop offset="100%" stop-color="#d4a5ff"/>
+              <stop offset="0%" stop-color="var(--knob-0)"/>
+              <stop offset="100%" stop-color="var(--knob-1)"/>
             </linearGradient>
             <linearGradient id="capGradientField" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#fff0f7"/>
-              <stop offset="100%" stop-color="#ffe4f0"/>
+              <stop offset="0%" stop-color="var(--cap-0)"/>
+              <stop offset="100%" stop-color="var(--cap-1)"/>
             </linearGradient>
           </defs>
           <path class="knob-track" id="fieldKnobTrack" d=""/>
@@ -1358,6 +1487,9 @@
     const electro = testMode === 'electro';
     const field = testMode === 'field';
     const reverb = testMode === 'reverb';
+    const root = document.documentElement;
+    root.classList.remove('theme-electro', 'theme-field', 'theme-reverb');
+    root.classList.add('theme-' + testMode);
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
     const panelField = document.getElementById('panelField');
     panelField.classList.toggle('hidden', !field && !reverb);

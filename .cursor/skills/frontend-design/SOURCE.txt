@@ -1,0 +1,2 @@
+Packaged from https://skillmd.ai/skills/frontend-design-324/download/ (frontend-design-324.zip).
+Entry orchestrator: README.md in this directory; Cursor entry point: SKILL.md (project-specific).
