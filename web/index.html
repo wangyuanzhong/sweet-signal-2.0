@@ -137,6 +137,11 @@
     --knob-ind-shadow: rgba(120, 125, 160, 0.22);
   }
 
+  /* 输出电平卡片：三种模式统一为电声单卡同款高度（声场双卡并排同高） */
+  html {
+    --volume-row-height: 5.5rem;
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -254,10 +259,17 @@
     display: flex;
     gap: 10px;
     align-items: stretch;
+    box-sizing: border-box;
+    min-height: var(--volume-row-height);
   }
   .volume-section.volume-half {
     flex: 1;
     min-width: 0;
+    min-height: var(--volume-row-height);
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   .volume-section.volume-half .volume-value {
     min-width: 44px;
@@ -323,7 +335,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 308px;
     justify-content: flex-start;
   }
 
@@ -429,11 +440,13 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    box-sizing: border-box;
+    min-height: var(--volume-row-height);
     background: rgba(255, 255, 255, 0.45);
     border-radius: 16px;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border: 1px solid rgba(255, 255, 255, 0.6);
-    gap: 8px;
+    gap: 6px;
   }
 
   .section-label {
@@ -442,6 +455,7 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.8px;
+    white-space: nowrap;
   }
 
   .select-icon {
