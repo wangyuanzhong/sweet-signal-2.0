@@ -23,7 +23,7 @@ Follow the skill’s **8-phase workflow** in order, but keep scope proportional 
 5. **Spatial composition** — Align **mode panels** to the same vertical rhythm (knob stack height, center readout slot); use an 8-based spacing scale consistent with the file.
 6. **Backgrounds & details** — Orbs + grain stay subtle; theme shifts orb hues with accents, not full redesign unless requested.
 7. **Implementation** — Apply parallel edits to **`web/index.html`** and **`desktop_app/src/index.html`** (pywebview shell); keep behavior JS intact.
-8. **Validation** — Toggle all three modes; confirm no layout shift in knob column; confirm theme variables resolve (no missing `var()`).
+8. **Validation** — Toggle all three modes; confirm no layout shift in knob column; confirm theme variables resolve (no missing `var()`). **Controls row:** in a column `flex` layout, never put `flex: 1` on `.output-section` / `.volume-section` or the electro-only volume row will stretch taller than the `field-sliders-row` block; use fixed `height`/`max-height` with `--volume-row-height` instead.
 
 ## Tech note
 

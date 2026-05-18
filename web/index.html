@@ -257,15 +257,20 @@
 
   .field-sliders-row {
     display: flex;
+    flex-direction: row;
+    flex: 0 0 auto;
     gap: 10px;
     align-items: stretch;
     box-sizing: border-box;
+    height: var(--volume-row-height);
     min-height: var(--volume-row-height);
+    max-height: var(--volume-row-height);
   }
   .volume-section.volume-half {
-    flex: 1;
+    flex: 1 1 0;
     min-width: 0;
-    min-height: var(--volume-row-height);
+    height: 100%;
+    min-height: 0;
     align-self: stretch;
     display: flex;
     flex-direction: column;
@@ -313,6 +318,34 @@
     filter: drop-shadow(0 0 10px var(--reverb-glow-fill));
     transition: filter 0.18s ease;
   }
+  /* 粉噪段：圆心 STEP / 粉噪 文案「在播」感（动效约 1s，ease-in-out） */
+  #panelField.reverb-pink-on .freq-display {
+    animation: reverbCenterHalo 1.05s ease-in-out infinite;
+  }
+  #panelField.reverb-pink-on #fieldSweepTitle,
+  #panelField.reverb-pink-on #fieldSweepSub {
+    animation: reverbLabelGlow 0.95s ease-in-out infinite alternate;
+  }
+  #panelField.reverb-pink-on .sweep-label-unit {
+    opacity: 0.72;
+    transition: opacity 0.22s ease;
+  }
+  @keyframes reverbCenterHalo {
+    0%, 100% {
+      filter: drop-shadow(0 0 6px rgba(255, 150, 195, 0.45)) drop-shadow(0 0 14px rgba(210, 175, 245, 0.3));
+    }
+    50% {
+      filter: drop-shadow(0 0 14px rgba(255, 130, 185, 0.75)) drop-shadow(0 0 26px rgba(200, 165, 255, 0.48));
+    }
+  }
+  @keyframes reverbLabelGlow {
+    0% {
+      text-shadow: 0 0 6px rgba(255, 165, 205, 0.55), 0 0 14px rgba(215, 180, 255, 0.35);
+    }
+    100% {
+      text-shadow: 0 0 14px rgba(255, 125, 180, 0.85), 0 0 24px rgba(195, 160, 255, 0.55);
+    }
+  }
   /* 混响播放中的静音段：关闭默认圆钮阴影，与粉噪段高亮形成对比 */
   #panelField.reverb-silence-phase .knob-wrapper {
     filter: none;
@@ -322,6 +355,16 @@
   #panelField.reverb-silence-phase #fieldKnobSvg .knob-indicator {
     filter: none;
     transition: filter 0.22s ease;
+  }
+  #panelField.reverb-silence-phase .freq-display,
+  #panelField.reverb-silence-phase #fieldSweepTitle,
+  #panelField.reverb-silence-phase #fieldSweepSub {
+    animation: none !important;
+    filter: none;
+    text-shadow: none;
+  }
+  #panelField.reverb-silence-phase .sweep-label-unit {
+    opacity: 0.35;
   }
   .sweep-label-unit {
     font-size: 0.75rem;
@@ -422,29 +465,37 @@
     gap: 14px;
     margin-bottom: 20px;
     align-items: stretch;
+    flex: 0 0 auto;
   }
 
+  /* 白卡：纵向 flex 里不要用 flex:1 拉伸高度；三模式固定同高（8px 网格：44=5.5rem） */
   .output-section {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     gap: 10px;
+    box-sizing: border-box;
+    height: var(--volume-row-height);
+    min-height: var(--volume-row-height);
+    max-height: var(--volume-row-height);
     background: rgba(255, 255, 255, 0.45);
     border-radius: 16px;
-    padding: 10px 12px;
+    padding: 0 12px;
     border: 1px solid rgba(255, 255, 255, 0.6);
   }
 
   .volume-section {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     justify-content: center;
     box-sizing: border-box;
+    height: var(--volume-row-height);
     min-height: var(--volume-row-height);
+    max-height: var(--volume-row-height);
     background: rgba(255, 255, 255, 0.45);
     border-radius: 16px;
-    padding: 10px 14px;
+    padding: 0 14px;
     border: 1px solid rgba(255, 255, 255, 0.6);
     gap: 6px;
   }
