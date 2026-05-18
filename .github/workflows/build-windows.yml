@@ -9,14 +9,20 @@
 # Notes:
 # - Artifacts expire after retention period (repository/org default).
 # - For public releases that do not expire, add a Release job on tag pushes.
+# - Pushes to cursor/** (e.g. Cursor Cloud agent branches) also trigger builds.
 
 name: Build Windows exe
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
+      - "cursor/**"
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:

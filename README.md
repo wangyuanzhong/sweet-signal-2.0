@@ -51,7 +51,7 @@ cd desktop_app && python -m PyInstaller --noconfirm SweetSignal.spec
 
 ## 从 GitHub Actions 下载 exe
 
-本仓库配置了 **GitHub Actions**（[`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml)），每次向 `main` / `master` 的 **`push`** 或在对应 PR、`workflow_dispatch` 中会构建 Windows 安装包占位产物。
+本仓库配置了 **GitHub Actions**（[`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml)），在以下情况会构建 Windows 产物：向 `main` / `master` / `cursor/**` 分支 **`push`**；向 `main` / `master` 打开的 **`pull_request`**；以及 **`workflow_dispatch`** 手动运行。
 
 ### 下载步骤
 
