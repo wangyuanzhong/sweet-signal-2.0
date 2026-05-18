@@ -24,8 +24,8 @@
 4. **产物（Artifact）**  
    - 名称：**`SweetSignal-Windows`**。  
    - 格式：**ZIP**。  
-   - 内容：**`SweetSignal/` 目录**（PyInstaller **onedir** 输出），内含 **`SweetSignal.exe`** 及运行所需 DLL/资源；用户解压后进入该目录再运行 exe。  
-   - 若构建目录或 exe 缺失：**构建步骤必须失败**，不得上传空 Artifact。
+   - 内容：**`SweetSignal.exe`**（PyInstaller **onefile** 单文件输出）。  
+   - 若构建产物缺失：**构建步骤必须失败**，不得上传空 Artifact。
 
 ## 非功能需求（Non-functional）
 
@@ -39,7 +39,7 @@
 
 以下内容 **当前未在工作流实现**，可作为后续迭代需求：
 
-- **GitHub Releases**：基于 `git tag v*` 自动生成 Release 并附上 Windows 构建产物（ZIP 内含 `SweetSignal/` 目录）。  
+- **GitHub Releases**：基于 `git tag v*` 自动生成 Release 并附上 Windows 构建产物（ZIP 内含 `SweetSignal.exe`）。  
 - **代码签名**：对 `SweetSignal.exe`（及随包 DLL，视签名工具而定）做 Authenticode / 证书签名，减轻 SmartScreen 拦截与首次信誉检查耗时。  
 - **自动版本号**：从 tag 或 `pyproject`/资源文件写入版本。
 

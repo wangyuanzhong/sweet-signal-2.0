@@ -4,7 +4,7 @@
 # 1. Open the repo on GitHub → Actions
 # 2. Click the latest successful "Build Windows exe" workflow run
 # 3. Scroll to "Artifacts" at the bottom of the summary page
-# 4. Download "SweetSignal-Windows" (ZIP contains folder `SweetSignal/` — run `SweetSignal.exe` inside it).
+# 4. Download "SweetSignal-Windows" (.zip containing SweetSignal.exe)
 #
 # Notes:
 # - Artifacts expire after retention period (repository/org default).
@@ -43,16 +43,14 @@ jobs:
         working-directory: desktop_app
         run: python -m PyInstaller --noconfirm SweetSignal.spec
 
-      - name: Archive app folder for artifact
+      - name: Archive executable for artifact
         shell: pwsh
         run: |
-          $dir = Join-Path "${{ github.workspace }}" "desktop_app" "dist" "SweetSignal"
-          if (-not (Test-Path $dir)) { throw "Expected build folder missing: $dir" }
-          $exe = Join-Path $dir "SweetSignal.exe"
+          $exe = Join-Path "${{ github.workspace }}" "desktop_app" "dist" "SweetSignal.exe"
           if (-not (Test-Path $exe)) { throw "Expected $exe missing" }
-          Compress-Archive -Path $dir -DestinationPath "${{ github.workspace }}\SweetSignal-Windows.zip" -Force
+          Compress-Archive -Path $exe -DestinationPath "${{ github.workspace }}\SweetSignal-Windows.zip" -Force
 
-      - name: Upload artifact (ZIP with SweetSignal folder — run SweetSignal.exe inside)
+      - name: Upload artifact (ZIP with exe inside)
         uses: actions/upload-artifact@v4
         with:
           name: SweetSignal-Windows
