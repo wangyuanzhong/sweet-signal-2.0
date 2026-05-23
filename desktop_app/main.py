@@ -291,6 +291,18 @@ class AudioEngine:
             self.silence_duration = self._clamp_pink_silence_sec(silence_sec)
             self._pink_cycle_pos = 0
 
+    def get_pink_cycle_phase(self):
+        """混响测量当前段：'pink'（粉噪）或 'silence'（静音）；未播放时返回 None。"""
+        with self.lock:
+            if self.mode != "pink_cycle" or not self.is_playing:
+                return None
+            sr = self.sample_rate
+            tp = max(1, int(self.pink_noise_duration * sr))
+            ts = max(1, int(self.silence_duration * sr))
+            cycle_len = tp + ts
+            pos = self._pink_cycle_pos % cycle_len
+            return "pink" if pos < tp else "silence"
+
     def stop(self):
         self.is_playing = False
         if self.stream is not None:
@@ -380,6 +392,10 @@ class Api:
     def set_pink_durations(self, pink_sec, silence_sec):
         """混响测量：播放中调整粉噪/静音时长。"""
         self.audio.set_pink_durations(pink_sec, silence_sec)
+
+    def get_pink_cycle_phase(self):
+        """混响测量：当前为粉噪段还是静音段（与音频引擎同步）。"""
+        return self.audio.get_pink_cycle_phase()
 
     def set_sweep_duration(self, duration_sec):
         """声场模式：调整单次扫频时长（秒）"""
