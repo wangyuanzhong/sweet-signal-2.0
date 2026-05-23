@@ -291,6 +291,20 @@ class AudioEngine:
             self.silence_duration = self._clamp_pink_silence_sec(silence_sec)
             self._pink_cycle_pos = 0
 
+    def is_pink_cycle_audible(self):
+        """True when pink-cycle output is in the noise segment with non-zero master gain."""
+        with self.lock:
+            if self.mode != "pink_cycle" or not self.is_playing:
+                return False
+            if self.volume <= 0.001:
+                return False
+            sr = self.sample_rate
+            Tp = max(1, int(self.pink_noise_duration * sr))
+            Ts = max(1, int(self.silence_duration * sr))
+            cycle_len = Tp + Ts
+            pos = self._pink_cycle_pos % cycle_len
+            return pos < Tp
+
     def stop(self):
         self.is_playing = False
         if self.stream is not None:
@@ -380,6 +394,10 @@ class Api:
     def set_pink_durations(self, pink_sec, silence_sec):
         """混响测量：播放中调整粉噪/静音时长。"""
         self.audio.set_pink_durations(pink_sec, silence_sec)
+
+    def is_pink_cycle_audible(self):
+        """混响测量：当前是否在粉噪有声段（供 UI 光效与音量同步）。"""
+        return self.audio.is_pink_cycle_audible()
 
     def set_sweep_duration(self, duration_sec):
         """声场模式：调整单次扫频时长（秒）"""

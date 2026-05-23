@@ -907,6 +907,8 @@
   let pinkBufferCache = null;
   let pinkBufferSr = 0;
   let reverbPhaseIsPink = true;
+  const REVERB_GAIN_GLOW_EPS = 0.001;
+  let reverbGlowPollTimer = null;
 
   let testMode = 'electro';
   const MIN_FREQ = 20;
@@ -1042,6 +1044,40 @@
       clearTimeout(reverbTimer);
       reverbTimer = null;
     }
+    stopReverbGlowPoll();
+  }
+
+  function isReverbAudibleFromGain() {
+    if (!gainNode || testMode !== 'reverb' || !isPlaying) return false;
+    return gainNode.gain.value > REVERB_GAIN_GLOW_EPS;
+  }
+
+  function applyReverbGlowClasses(audible) {
+    const panelField = document.getElementById('panelField');
+    if (!panelField) return;
+    const reverbActive = testMode === 'reverb' && isPlaying;
+    panelField.classList.remove('reverb-pink-on', 'reverb-silence-phase');
+    if (!reverbActive) return;
+    if (audible) panelField.classList.add('reverb-pink-on');
+    else panelField.classList.add('reverb-silence-phase');
+  }
+
+  function syncReverbGlowFromAudio() {
+    applyReverbGlowClasses(isReverbAudibleFromGain());
+  }
+
+  function startReverbGlowPoll() {
+    stopReverbGlowPoll();
+    syncReverbGlowFromAudio();
+    reverbGlowPollTimer = setInterval(syncReverbGlowFromAudio, 50);
+  }
+
+  function stopReverbGlowPoll() {
+    if (reverbGlowPollTimer) {
+      clearInterval(reverbGlowPollTimer);
+      reverbGlowPollTimer = null;
+    }
+    applyReverbGlowClasses(false);
   }
 
   function buildPinkNoiseBuffer(ctx) {
@@ -1202,12 +1238,13 @@
     pinkNoiseSource.buffer = buf;
     pinkNoiseSource.loop = true;
     gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
     pinkNoiseSource.connect(gainNode);
     connectOutput();
     pinkNoiseSource.start(0);
 
     isPlaying = true;
-    reverbPhaseIsPink = true;
+    reverbPhaseIsPink = false;
 
     function armSilence() {
       if (!isPlaying || testMode !== 'reverb' || !gainNode || !audioCtx) return;
@@ -1235,6 +1272,7 @@
     }
 
     armPink();
+    startReverbGlowPoll();
     updateUI();
   }
 
@@ -1292,12 +1330,11 @@
     if (panelField && sweepTitle && sweepSub) {
       const fpField = testMode === 'field' && isPlaying;
       panelField.classList.toggle('field-sweep-active', fpField);
-      const reverbActive = testMode === 'reverb' && isPlaying;
-      const reverbPinkGlow = reverbActive && reverbPhaseIsPink;
-      const reverbSilenceDim = reverbActive && !reverbPhaseIsPink;
-      panelField.classList.remove('reverb-pink-on', 'reverb-silence-phase');
-      if (reverbPinkGlow) panelField.classList.add('reverb-pink-on');
-      if (reverbSilenceDim) panelField.classList.add('reverb-silence-phase');
+      if (testMode === 'reverb' && isPlaying) {
+        syncReverbGlowFromAudio();
+      } else {
+        applyReverbGlowClasses(false);
+      }
       if (testMode === 'field') {
         sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
         sweepSub.textContent = '\u00a0';
