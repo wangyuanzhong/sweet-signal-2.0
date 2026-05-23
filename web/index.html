@@ -307,6 +307,26 @@
   /* 混响粉噪段：大圆钮光泽扫过；静音段无任何光效 */
   #panelField .knob-wrapper {
     transition: filter 0.22s ease;
+    overflow: visible;
+  }
+  #panelField .freq-display {
+    z-index: 4;
+  }
+  #panelField.reverb-step-mode.is-reverb-playing #fieldSweepSub {
+    opacity: 1 !important;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    margin-top: 6px;
+    color: var(--text-main);
+  }
+  #panelField.reverb-pink-on #fieldSweepSub {
+    color: #c43d72;
+    text-shadow: 0 0 12px rgba(255, 140, 190, 0.55);
+  }
+  #panelField.reverb-silence-phase #fieldSweepSub {
+    color: var(--text-muted);
+    text-shadow: none;
   }
   #panelField.reverb-pink-on .knob-wrapper::after {
     content: '';
@@ -318,7 +338,7 @@
     transform: translate(-50%, -50%);
     border-radius: 50%;
     pointer-events: none;
-    z-index: 2;
+    z-index: 1;
     background: linear-gradient(
       118deg,
       transparent 32%,
@@ -339,10 +359,6 @@
   #panelField.reverb-pink-on #fieldKnobSvg .knob-fill {
     filter: drop-shadow(0 0 8px var(--reverb-glow-fill));
     transition: filter 0.2s ease;
-  }
-  #panelField.reverb-pink-on .sweep-label-unit {
-    opacity: 0.72;
-    transition: opacity 0.22s ease;
   }
   @keyframes reverbKnobShimmer {
     0% { background-position: 120% 0; opacity: 0.55; }
@@ -368,8 +384,27 @@
     filter: none !important;
     text-shadow: none !important;
   }
-  #panelField.reverb-silence-phase .sweep-label-unit {
-    opacity: 0.35;
+  .reverb-phase-banner {
+    width: 220px;
+    margin: -6px auto 14px;
+    padding: 8px 0;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-align: center;
+    border-radius: 12px;
+    transition: background 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+  }
+  #panelField.reverb-pink-on .reverb-phase-banner {
+    background: rgba(255, 185, 215, 0.42);
+    color: #b83268;
+    box-shadow: 0 0 18px rgba(255, 150, 195, 0.5);
+  }
+  #panelField.reverb-silence-phase .reverb-phase-banner {
+    background: rgba(255, 255, 255, 0.28);
+    color: var(--text-muted);
+    box-shadow: none;
   }
   .sweep-label-unit {
     font-size: 0.75rem;
@@ -815,6 +850,7 @@
         <span id="fieldKnobLabelLow">100 Hz</span>
         <span id="fieldKnobLabelHigh">10 kHz</span>
       </div>
+      <p id="reverbPhaseBanner" class="reverb-phase-banner hidden" aria-live="polite"></p>
     </div>
 
     <!-- Output Device + Volume -->
@@ -1285,15 +1321,22 @@
       const reverbActive = testMode === 'reverb' && isPlaying;
       const reverbPinkGlow = reverbActive && reverbPhaseIsPink;
       const reverbSilenceDim = reverbActive && !reverbPhaseIsPink;
+      panelField.classList.toggle('is-reverb-playing', reverbActive);
       panelField.classList.remove('reverb-pink-on', 'reverb-silence-phase');
       if (reverbPinkGlow) panelField.classList.add('reverb-pink-on');
       if (reverbSilenceDim) panelField.classList.add('reverb-silence-phase');
+      const phaseBanner = document.getElementById('reverbPhaseBanner');
+      if (phaseBanner) {
+        phaseBanner.classList.toggle('hidden', !reverbActive);
+        if (reverbActive) phaseBanner.textContent = reverbPhaseIsPink ? '粉噪' : '静音';
+      }
       if (testMode === 'field') {
         sweepTitle.textContent = fpField ? 'SWEEPING.' : 'SWEEP';
         sweepSub.textContent = '\u00a0';
       } else if (testMode === 'reverb') {
         sweepTitle.textContent = 'STEP';
-        sweepSub.textContent = !isPlaying ? '\u00a0' : (reverbPhaseIsPink ? '粉噪' : '静音');
+        const phaseLabel = !isPlaying ? '—' : (reverbPhaseIsPink ? '粉噪' : '静音');
+        sweepSub.textContent = phaseLabel;
       }
     }
   }
@@ -1597,8 +1640,10 @@
 
   document.getElementById('btnPlay').addEventListener('click', () => {
     if (isPlaying) return;
-    const mode = document.querySelector('input[name="testMode"]:checked').value;
+    const checked = document.querySelector('input[name="testMode"]:checked');
+    const mode = checked ? checked.value : 'electro';
     testMode = mode;
+    applyModeFromUI();
     if (mode === 'electro') {
       startTone(frequency);
     } else if (mode === 'field') {
