@@ -319,15 +319,15 @@
     margin-top: 6px;
     color: var(--text-main);
   }
-  #panelField.reverb-pink-on #fieldSweepSub {
+  #panelField[data-reverb-phase="pink"] #fieldSweepSub {
     color: #c43d72;
     text-shadow: 0 0 12px rgba(255, 140, 190, 0.55);
   }
-  #panelField.reverb-silence-phase #fieldSweepSub {
+  #panelField[data-reverb-phase="silence"] #fieldSweepSub {
     color: var(--text-muted);
     text-shadow: none;
   }
-  #panelField.reverb-pink-on .knob-wrapper::after {
+  #panelField[data-reverb-phase="pink"] .knob-wrapper::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -351,11 +351,11 @@
     mix-blend-mode: soft-light;
     opacity: 0.92;
   }
-  #panelField.reverb-pink-on #fieldKnobSvg .knob-cap {
+  #panelField[data-reverb-phase="pink"] #fieldKnobSvg .knob-cap {
     filter: drop-shadow(0 6px 14px var(--knob-cap-shadow)) drop-shadow(0 0 18px var(--reverb-glow-cap));
     transition: filter 0.2s ease;
   }
-  #panelField.reverb-pink-on #fieldKnobSvg .knob-fill {
+  #panelField[data-reverb-phase="pink"] #fieldKnobSvg .knob-fill {
     filter: drop-shadow(0 0 8px var(--reverb-glow-fill));
     transition: filter 0.2s ease;
   }
@@ -364,21 +364,21 @@
     45% { opacity: 0.95; }
     100% { background-position: -20% 0; opacity: 0.55; }
   }
-  #panelField.reverb-silence-phase .knob-wrapper::after {
-    display: none;
+  #panelField[data-reverb-phase="silence"] .knob-wrapper::after {
+    content: none !important;
+    display: none !important;
+    animation: none !important;
+    opacity: 0 !important;
   }
-  #panelField.reverb-silence-phase #fieldKnobSvg .knob-cap {
-    filter: drop-shadow(0 6px 14px var(--knob-cap-shadow));
+  #panelField[data-reverb-phase="silence"] #fieldKnobSvg .knob-cap,
+  #panelField[data-reverb-phase="silence"] #fieldKnobSvg .knob-fill,
+  #panelField[data-reverb-phase="silence"] #fieldKnobSvg .knob-indicator {
+    filter: none !important;
     transition: filter 0.22s ease;
   }
-  #panelField.reverb-silence-phase #fieldKnobSvg .knob-fill,
-  #panelField.reverb-silence-phase #fieldKnobSvg .knob-indicator {
-    filter: none;
-    transition: filter 0.22s ease;
-  }
-  #panelField.reverb-silence-phase .freq-display,
-  #panelField.reverb-silence-phase #fieldSweepTitle,
-  #panelField.reverb-silence-phase #fieldSweepSub {
+  #panelField[data-reverb-phase="silence"] .freq-display,
+  #panelField[data-reverb-phase="silence"] #fieldSweepTitle,
+  #panelField[data-reverb-phase="silence"] #fieldSweepSub {
     animation: none !important;
     filter: none !important;
     text-shadow: none !important;
@@ -395,12 +395,12 @@
     border-radius: 12px;
     transition: background 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
   }
-  #panelField.reverb-pink-on .reverb-phase-banner {
+  #panelField[data-reverb-phase="pink"] .reverb-phase-banner {
     background: rgba(255, 185, 215, 0.42);
     color: #b83268;
     box-shadow: 0 0 18px rgba(255, 150, 195, 0.5);
   }
-  #panelField.reverb-silence-phase .reverb-phase-banner {
+  #panelField[data-reverb-phase="silence"] .reverb-phase-banner {
     background: rgba(255, 255, 255, 0.28);
     color: var(--text-muted);
     box-shadow: none;
@@ -902,7 +902,7 @@ window.pywebview = window.pywebview || {};
   let fieldDragSide = 'low';
   let lastFieldFullRatio = 0.25;
   let reverbPhaseIsPink = true;
-  let reverbPhasePollId = null;
+  let reverbUiTimer = null;
 
   const svg = document.getElementById('knobSvg');
   const fieldSvg = document.getElementById('fieldKnobSvg');
@@ -1187,38 +1187,35 @@ window.pywebview = window.pywebview || {};
     return testMode === 'field' ? volumeSliderField : volumeSlider;
   }
 
-  function clearReverbPhasePoll() {
-    if (reverbPhasePollId !== null) {
-      cancelAnimationFrame(reverbPhasePollId);
-      reverbPhasePollId = null;
+  function clearReverbUiTimer() {
+    if (reverbUiTimer) {
+      clearTimeout(reverbUiTimer);
+      reverbUiTimer = null;
     }
   }
 
-  function syncReverbPhaseFromBackend() {
-    if (!isPlaying || testMode !== 'reverb') {
-      clearReverbPhasePoll();
-      return;
-    }
-    if (window.pywebview && window.pywebview.api) {
-      try {
-        const phase = window.pywebview.api.get_pink_cycle_phase();
-        if (phase === 'pink' || phase === 'silence') {
-          const isPink = phase === 'pink';
-          if (isPink !== reverbPhaseIsPink) {
-            reverbPhaseIsPink = isPink;
-            updateUI();
-          }
-        }
-      } catch (e) { /* pywebview not ready */ }
-    }
-    reverbPhasePollId = requestAnimationFrame(syncReverbPhaseFromBackend);
+  function armReverbUiSilence() {
+    if (!isPlaying || testMode !== 'reverb') return;
+    reverbPhaseIsPink = false;
+    updateUI();
+    const ms = Math.max(80, getSilenceDurationSec() * 1000);
+    reverbUiTimer = setTimeout(armReverbUiPink, ms);
+  }
+
+  function armReverbUiPink() {
+    if (!isPlaying || testMode !== 'reverb') return;
+    reverbPhaseIsPink = true;
+    updateUI();
+    const ms = Math.max(80, getPinkDurationSec() * 1000);
+    reverbUiTimer = setTimeout(armReverbUiSilence, ms);
   }
 
   function startReverbUiPhaseTimer() {
-    clearReverbPhasePoll();
+    clearReverbUiTimer();
     reverbPhaseIsPink = true;
     updateUI();
-    reverbPhasePollId = requestAnimationFrame(syncReverbPhaseFromBackend);
+    const ms = Math.max(80, getPinkDurationSec() * 1000);
+    reverbUiTimer = setTimeout(armReverbUiSilence, ms);
   }
 
   function onVolumeInput(e) {
@@ -1252,6 +1249,11 @@ window.pywebview = window.pywebview || {};
       const reverbPinkGlow = reverbActive && reverbPhaseIsPink;
       const reverbSilenceDim = reverbActive && !reverbPhaseIsPink;
       panelField.classList.toggle('is-reverb-playing', reverbActive);
+      if (reverbActive) {
+        panelField.setAttribute('data-reverb-phase', reverbPhaseIsPink ? 'pink' : 'silence');
+      } else {
+        panelField.removeAttribute('data-reverb-phase');
+      }
       panelField.classList.remove('reverb-pink-on', 'reverb-silence-phase');
       if (reverbPinkGlow) panelField.classList.add('reverb-pink-on');
       if (reverbSilenceDim) panelField.classList.add('reverb-silence-phase');
@@ -1311,7 +1313,7 @@ window.pywebview = window.pywebview || {};
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.stop_tone();
         isPlaying = false;
-        clearReverbPhasePoll();
+        clearReverbUiTimer();
         updateUI();
       }
       applyModeFromUI();
@@ -1409,7 +1411,7 @@ window.pywebview = window.pywebview || {};
 
   document.getElementById('btnStop').addEventListener('click', () => {
     if (!isPlaying) return;
-    clearReverbPhasePoll();
+    clearReverbUiTimer();
     if (window.pywebview && window.pywebview.api) {
       window.pywebview.api.stop_tone();
     }

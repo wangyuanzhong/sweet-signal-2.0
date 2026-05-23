@@ -320,15 +320,16 @@
     margin-top: 6px;
     color: var(--text-main);
   }
-  #panelField.reverb-pink-on #fieldSweepSub {
+  #panelField[data-reverb-phase="pink"] #fieldSweepSub {
     color: #c43d72;
     text-shadow: 0 0 12px rgba(255, 140, 190, 0.55);
   }
-  #panelField.reverb-silence-phase #fieldSweepSub {
+  #panelField[data-reverb-phase="silence"] #fieldSweepSub {
     color: var(--text-muted);
     text-shadow: none;
   }
-  #panelField.reverb-pink-on .knob-wrapper::after {
+  /* 仅粉噪段：旋钮扫光 + 外发光；静音段完全不渲染光效层 */
+  #panelField[data-reverb-phase="pink"] .knob-wrapper::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -352,11 +353,11 @@
     mix-blend-mode: soft-light;
     opacity: 0.92;
   }
-  #panelField.reverb-pink-on #fieldKnobSvg .knob-cap {
+  #panelField[data-reverb-phase="pink"] #fieldKnobSvg .knob-cap {
     filter: drop-shadow(0 6px 14px var(--knob-cap-shadow)) drop-shadow(0 0 18px var(--reverb-glow-cap));
     transition: filter 0.2s ease;
   }
-  #panelField.reverb-pink-on #fieldKnobSvg .knob-fill {
+  #panelField[data-reverb-phase="pink"] #fieldKnobSvg .knob-fill {
     filter: drop-shadow(0 0 8px var(--reverb-glow-fill));
     transition: filter 0.2s ease;
   }
@@ -365,21 +366,21 @@
     45% { opacity: 0.95; }
     100% { background-position: -20% 0; opacity: 0.55; }
   }
-  #panelField.reverb-silence-phase .knob-wrapper::after {
-    display: none;
+  #panelField[data-reverb-phase="silence"] .knob-wrapper::after {
+    content: none !important;
+    display: none !important;
+    animation: none !important;
+    opacity: 0 !important;
   }
-  #panelField.reverb-silence-phase #fieldKnobSvg .knob-cap {
-    filter: drop-shadow(0 6px 14px var(--knob-cap-shadow));
+  #panelField[data-reverb-phase="silence"] #fieldKnobSvg .knob-cap,
+  #panelField[data-reverb-phase="silence"] #fieldKnobSvg .knob-fill,
+  #panelField[data-reverb-phase="silence"] #fieldKnobSvg .knob-indicator {
+    filter: none !important;
     transition: filter 0.22s ease;
   }
-  #panelField.reverb-silence-phase #fieldKnobSvg .knob-fill,
-  #panelField.reverb-silence-phase #fieldKnobSvg .knob-indicator {
-    filter: none;
-    transition: filter 0.22s ease;
-  }
-  #panelField.reverb-silence-phase .freq-display,
-  #panelField.reverb-silence-phase #fieldSweepTitle,
-  #panelField.reverb-silence-phase #fieldSweepSub {
+  #panelField[data-reverb-phase="silence"] .freq-display,
+  #panelField[data-reverb-phase="silence"] #fieldSweepTitle,
+  #panelField[data-reverb-phase="silence"] #fieldSweepSub {
     animation: none !important;
     filter: none !important;
     text-shadow: none !important;
@@ -396,12 +397,12 @@
     border-radius: 12px;
     transition: background 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
   }
-  #panelField.reverb-pink-on .reverb-phase-banner {
+  #panelField[data-reverb-phase="pink"] .reverb-phase-banner {
     background: rgba(255, 185, 215, 0.42);
     color: #b83268;
     box-shadow: 0 0 18px rgba(255, 150, 195, 0.5);
   }
-  #panelField.reverb-silence-phase .reverb-phase-banner {
+  #panelField[data-reverb-phase="silence"] .reverb-phase-banner {
     background: rgba(255, 255, 255, 0.28);
     color: var(--text-muted);
     box-shadow: none;
@@ -933,6 +934,7 @@
   let pinkBufferCache = null;
   let pinkBufferSr = 0;
   let reverbPhaseIsPink = true;
+  let reverbPhasePollId = null;
 
   let testMode = 'electro';
   const MIN_FREQ = 20;
@@ -1068,6 +1070,37 @@
       clearTimeout(reverbTimer);
       reverbTimer = null;
     }
+    if (reverbPhasePollId !== null) {
+      cancelAnimationFrame(reverbPhasePollId);
+      reverbPhasePollId = null;
+    }
+  }
+
+  /** 根据输出增益判断粉噪/静音，驱动光效（与听感一致） */
+  function startReverbPhaseVisualSync() {
+    if (reverbPhasePollId !== null) {
+      cancelAnimationFrame(reverbPhasePollId);
+      reverbPhasePollId = null;
+    }
+    function tick() {
+      if (!isPlaying || testMode !== 'reverb') {
+        if (reverbPhasePollId !== null) {
+          cancelAnimationFrame(reverbPhasePollId);
+          reverbPhasePollId = null;
+        }
+        return;
+      }
+      if (gainNode && audioCtx) {
+        const g = gainNode.gain.getValueAtTime(audioCtx.currentTime);
+        const audible = g > 0.002;
+        if (audible !== reverbPhaseIsPink) {
+          reverbPhaseIsPink = audible;
+          updateUI();
+        }
+      }
+      reverbPhasePollId = requestAnimationFrame(tick);
+    }
+    reverbPhasePollId = requestAnimationFrame(tick);
   }
 
   function buildPinkNoiseBuffer(ctx) {
@@ -1238,8 +1271,6 @@
     function armSilence() {
       if (!isPlaying || testMode !== 'reverb' || !gainNode || !audioCtx) return;
       const now = audioCtx.currentTime;
-      reverbPhaseIsPink = false;
-      updateUI();
       gainNode.gain.cancelScheduledValues(now);
       gainNode.gain.setValueAtTime(gainNode.gain.value, now);
       gainNode.gain.linearRampToValueAtTime(0, now + 0.03);
@@ -1251,8 +1282,6 @@
       if (!isPlaying || testMode !== 'reverb' || !gainNode || !audioCtx) return;
       const now = audioCtx.currentTime;
       const tg = sliderToGain(currentGain * 100);
-      reverbPhaseIsPink = true;
-      updateUI();
       gainNode.gain.cancelScheduledValues(now);
       gainNode.gain.setValueAtTime(gainNode.gain.value, now);
       gainNode.gain.linearRampToValueAtTime(tg, now + 0.02);
@@ -1262,6 +1291,7 @@
 
     armPink();
     updateUI();
+    startReverbPhaseVisualSync();
   }
 
   function updateGain() {
@@ -1322,6 +1352,11 @@
       const reverbPinkGlow = reverbActive && reverbPhaseIsPink;
       const reverbSilenceDim = reverbActive && !reverbPhaseIsPink;
       panelField.classList.toggle('is-reverb-playing', reverbActive);
+      if (reverbActive) {
+        panelField.setAttribute('data-reverb-phase', reverbPhaseIsPink ? 'pink' : 'silence');
+      } else {
+        panelField.removeAttribute('data-reverb-phase');
+      }
       panelField.classList.remove('reverb-pink-on', 'reverb-silence-phase');
       if (reverbPinkGlow) panelField.classList.add('reverb-pink-on');
       if (reverbSilenceDim) panelField.classList.add('reverb-silence-phase');
