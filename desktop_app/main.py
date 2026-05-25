@@ -27,6 +27,8 @@ class AudioEngine:
         self.stream = None
         self.phase = 0.0
         self.lock = threading.Lock()
+        self._output_latency_sec = 0.0
+        self._stream_blocksize = 2048
 
     @staticmethod
     def _clamp_sweep_duration(sec):
@@ -74,7 +76,41 @@ class AudioEngine:
         except Exception:
             pass
         return self.sample_rate
-    
+
+    @staticmethod
+    def _estimate_output_latency_sec(output_index, sample_rate, blocksize):
+        """PortAudio 设备延迟 + 约 2 个回调块（尚未从缓冲区播出的样本）。"""
+        dev_lat = 0.05
+        try:
+            info = sd.query_devices(output_index)
+            high = float(info.get('default_high_output_latency') or 0)
+            low = float(info.get('default_low_output_latency') or 0)
+            if high > 0:
+                dev_lat = high
+            elif low > 0:
+                dev_lat = low
+        except Exception:
+            pass
+        sr = max(int(sample_rate), 1)
+        block_lat = float(blocksize) / sr
+        return dev_lat + block_lat * 2.0
+
+    def _create_output_stream(self, out_idx, sample_rate):
+        blocksize = self._stream_blocksize
+        with self.lock:
+            self.sample_rate = sample_rate
+            self._output_latency_sec = self._estimate_output_latency_sec(
+                out_idx, sample_rate, blocksize
+            )
+        return sd.OutputStream(
+            samplerate=sample_rate,
+            channels=2,
+            dtype=np.float32,
+            device=out_idx,
+            callback=self.callback,
+            blocksize=blocksize,
+        )
+
     def callback(self, outdata, frames, time_info, status):
         if status:
             print(f"Status: {status}")
@@ -190,17 +226,7 @@ class AudioEngine:
             out_idx = self._effective_output_device()
             sample_rate = self._samplerate_for_device(out_idx)
 
-            with self.lock:
-                self.sample_rate = sample_rate
-
-            self.stream = sd.OutputStream(
-                samplerate=sample_rate,
-                channels=2,
-                dtype=np.float32,
-                device=out_idx,
-                callback=self.callback,
-                blocksize=2048,
-            )
+            self.stream = self._create_output_stream(out_idx, sample_rate)
             self.stream.start()
             self.is_playing = True
             return True
@@ -227,17 +253,7 @@ class AudioEngine:
             out_idx = self._effective_output_device()
             sample_rate = self._samplerate_for_device(out_idx)
 
-            with self.lock:
-                self.sample_rate = sample_rate
-
-            self.stream = sd.OutputStream(
-                samplerate=sample_rate,
-                channels=2,
-                dtype=np.float32,
-                device=out_idx,
-                callback=self.callback,
-                blocksize=2048,
-            )
+            self.stream = self._create_output_stream(out_idx, sample_rate)
             self.stream.start()
             self.is_playing = True
             return True
@@ -268,14 +284,7 @@ class AudioEngine:
             with self.lock:
                 self.sample_rate = sample_rate
 
-            self.stream = sd.OutputStream(
-                samplerate=sample_rate,
-                channels=2,
-                dtype=np.float32,
-                device=out_idx,
-                callback=self.callback,
-                blocksize=2048,
-            )
+            self.stream = self._create_output_stream(out_idx, sample_rate)
             self.stream.start()
             self.is_playing = True
             return True
@@ -291,6 +300,10 @@ class AudioEngine:
             self.silence_duration = self._clamp_pink_silence_sec(silence_sec)
             self._pink_cycle_pos = 0
 
+    def get_output_latency_sec(self):
+        with self.lock:
+            return float(self._output_latency_sec)
+
     def get_pink_cycle_phase(self):
         """混响测量当前段：'pink'（粉噪）或 'silence'（静音）；未播放时返回 None。"""
         with self.lock:
@@ -300,7 +313,8 @@ class AudioEngine:
             tp = max(1, int(self.pink_noise_duration * sr))
             ts = max(1, int(self.silence_duration * sr))
             cycle_len = tp + ts
-            pos = self._pink_cycle_pos % cycle_len
+            lat_samples = int(self._output_latency_sec * sr)
+            pos = (self._pink_cycle_pos - lat_samples) % cycle_len
             return "pink" if pos < tp else "silence"
 
     def stop(self):
@@ -396,6 +410,10 @@ class Api:
     def get_pink_cycle_phase(self):
         """混响测量：当前为粉噪段还是静音段（与音频引擎同步）。"""
         return self.audio.get_pink_cycle_phase()
+
+    def get_output_latency_sec(self):
+        """当前输出设备估算的播放延迟（秒），供 UI 与听感对齐。"""
+        return self.audio.get_output_latency_sec()
 
     def set_sweep_duration(self, duration_sec):
         """声场模式：调整单次扫频时长（秒）"""

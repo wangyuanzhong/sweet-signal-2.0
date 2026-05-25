@@ -957,9 +957,22 @@
 
   function getAudioCtx() {
     if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      try {
+        audioCtx = new Ctx({ latencyHint: 'playback' });
+      } catch (e) {
+        audioCtx = new Ctx();
+      }
     }
     return audioCtx;
+  }
+
+  /** 扬声器实际听到的内容 ≈ 图在 (currentTime - latency) 时刻的状态 */
+  function getPlaybackLatencySec(ctx) {
+    if (!ctx) return 0;
+    const base = typeof ctx.baseLatency === 'number' ? ctx.baseLatency : 0;
+    const out = typeof ctx.outputLatency === 'number' ? ctx.outputLatency : 0;
+    return Math.max(0, base + out);
   }
 
   function sliderToGain(sliderVal) {
@@ -1091,7 +1104,9 @@
         return;
       }
       if (gainNode && audioCtx) {
-        const g = gainNode.gain.getValueAtTime(audioCtx.currentTime);
+        const lat = getPlaybackLatencySec(audioCtx);
+        const tHear = Math.max(0, audioCtx.currentTime - lat);
+        const g = gainNode.gain.getValueAtTime(tHear);
         const audible = g > 0.002;
         if (audible !== reverbPhaseIsPink) {
           reverbPhaseIsPink = audible;

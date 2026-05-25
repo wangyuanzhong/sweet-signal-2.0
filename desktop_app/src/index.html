@@ -902,7 +902,7 @@ window.pywebview = window.pywebview || {};
   let fieldDragSide = 'low';
   let lastFieldFullRatio = 0.25;
   let reverbPhaseIsPink = true;
-  let reverbUiTimer = null;
+  let reverbPhasePollId = null;
 
   const svg = document.getElementById('knobSvg');
   const fieldSvg = document.getElementById('fieldKnobSvg');
@@ -1047,7 +1047,7 @@ window.pywebview = window.pywebview || {};
       renderFieldKnob();
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
-        startReverbUiPhaseTimer();
+        startReverbPhaseVisualSync();
       }
       return;
     }
@@ -1083,7 +1083,7 @@ window.pywebview = window.pywebview || {};
       renderFieldKnob();
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
-        startReverbUiPhaseTimer();
+        startReverbPhaseVisualSync();
       }
       return;
     }
@@ -1187,35 +1187,35 @@ window.pywebview = window.pywebview || {};
     return testMode === 'field' ? volumeSliderField : volumeSlider;
   }
 
-  function clearReverbUiTimer() {
-    if (reverbUiTimer) {
-      clearTimeout(reverbUiTimer);
-      reverbUiTimer = null;
+  function clearReverbPhasePoll() {
+    if (reverbPhasePollId !== null) {
+      cancelAnimationFrame(reverbPhasePollId);
+      reverbPhasePollId = null;
     }
   }
 
-  function armReverbUiSilence() {
-    if (!isPlaying || testMode !== 'reverb') return;
-    reverbPhaseIsPink = false;
-    updateUI();
-    const ms = Math.max(80, getSilenceDurationSec() * 1000);
-    reverbUiTimer = setTimeout(armReverbUiPink, ms);
-  }
-
-  function armReverbUiPink() {
-    if (!isPlaying || testMode !== 'reverb') return;
-    reverbPhaseIsPink = true;
-    updateUI();
-    const ms = Math.max(80, getPinkDurationSec() * 1000);
-    reverbUiTimer = setTimeout(armReverbUiSilence, ms);
-  }
-
-  function startReverbUiPhaseTimer() {
-    clearReverbUiTimer();
-    reverbPhaseIsPink = true;
-    updateUI();
-    const ms = Math.max(80, getPinkDurationSec() * 1000);
-    reverbUiTimer = setTimeout(armReverbUiSilence, ms);
+  function startReverbPhaseVisualSync() {
+    clearReverbPhasePoll();
+    function tick() {
+      if (!isPlaying || testMode !== 'reverb') {
+        clearReverbPhasePoll();
+        return;
+      }
+      if (window.pywebview && window.pywebview.api) {
+        try {
+          const phase = window.pywebview.api.get_pink_cycle_phase();
+          if (phase === 'pink' || phase === 'silence') {
+            const isPink = phase === 'pink';
+            if (isPink !== reverbPhaseIsPink) {
+              reverbPhaseIsPink = isPink;
+              updateUI();
+            }
+          }
+        } catch (e) { /* api not ready */ }
+      }
+      reverbPhasePollId = requestAnimationFrame(tick);
+    }
+    reverbPhasePollId = requestAnimationFrame(tick);
   }
 
   function onVolumeInput(e) {
@@ -1313,7 +1313,7 @@ window.pywebview = window.pywebview || {};
       if (isPlaying && window.pywebview && window.pywebview.api) {
         window.pywebview.api.stop_tone();
         isPlaying = false;
-        clearReverbUiTimer();
+        clearReverbPhasePoll();
         updateUI();
       }
       applyModeFromUI();
@@ -1379,7 +1379,7 @@ window.pywebview = window.pywebview || {};
     renderFieldKnob();
     if (isPlaying && testMode === 'reverb' && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
-      startReverbUiPhaseTimer();
+      startReverbPhaseVisualSync();
     }
   });
   document.getElementById('silenceDurationSlider').addEventListener('input', () => {
@@ -1387,7 +1387,7 @@ window.pywebview = window.pywebview || {};
     renderFieldKnob();
     if (isPlaying && testMode === 'reverb' && window.pywebview && window.pywebview.api) {
       window.pywebview.api.set_pink_durations(getPinkDurationSec(), getSilenceDurationSec());
-      startReverbUiPhaseTimer();
+      startReverbPhaseVisualSync();
     }
   });
 
@@ -1403,7 +1403,7 @@ window.pywebview = window.pywebview || {};
       window.pywebview.api.start_sweep(fLowField, fHighField, currentGain, getSweepDurationSec());
     } else {
       window.pywebview.api.start_pink_cycle(getPinkDurationSec(), getSilenceDurationSec(), currentGain);
-      startReverbUiPhaseTimer();
+      startReverbPhaseVisualSync();
     }
     isPlaying = true;
     updateUI();
@@ -1411,7 +1411,7 @@ window.pywebview = window.pywebview || {};
 
   document.getElementById('btnStop').addEventListener('click', () => {
     if (!isPlaying) return;
-    clearReverbUiTimer();
+    clearReverbPhasePoll();
     if (window.pywebview && window.pywebview.api) {
       window.pywebview.api.stop_tone();
     }
