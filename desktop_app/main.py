@@ -313,8 +313,7 @@ class AudioEngine:
             tp = max(1, int(self.pink_noise_duration * sr))
             ts = max(1, int(self.silence_duration * sr))
             cycle_len = tp + ts
-            lat_samples = int(self._output_latency_sec * sr)
-            pos = (self._pink_cycle_pos - lat_samples) % cycle_len
+            pos = self._pink_cycle_pos % cycle_len
             return "pink" if pos < tp else "silence"
 
     def stop(self):

@@ -933,8 +933,9 @@
   let pinkNoiseSource = null;
   let pinkBufferCache = null;
   let pinkBufferSr = 0;
-  let reverbPhaseIsPink = true;
+  let reverbPhaseIsPink = false;
   let reverbPhasePollId = null;
+  let reverbSessionStartTime = 0;
 
   let testMode = 'electro';
   const MIN_FREQ = 20;
@@ -1105,7 +1106,7 @@
       }
       if (gainNode && audioCtx) {
         const lat = getPlaybackLatencySec(audioCtx);
-        const tHear = Math.max(0, audioCtx.currentTime - lat);
+        const tHear = Math.max(reverbSessionStartTime, audioCtx.currentTime - lat);
         const g = gainNode.gain.getValueAtTime(tHear);
         const audible = g > 0.002;
         if (audible !== reverbPhaseIsPink) {
@@ -1276,12 +1277,14 @@
     pinkNoiseSource.buffer = buf;
     pinkNoiseSource.loop = true;
     gainNode = ctx.createGain();
+    reverbSessionStartTime = ctx.currentTime;
+    gainNode.gain.setValueAtTime(0, reverbSessionStartTime);
     pinkNoiseSource.connect(gainNode);
     connectOutput();
     pinkNoiseSource.start(0);
 
     isPlaying = true;
-    reverbPhaseIsPink = true;
+    reverbPhaseIsPink = false;
 
     function armSilence() {
       if (!isPlaying || testMode !== 'reverb' || !gainNode || !audioCtx) return;
@@ -1305,7 +1308,6 @@
     }
 
     armPink();
-    updateUI();
     startReverbPhaseVisualSync();
   }
 
@@ -1343,6 +1345,7 @@
       oscillator = null;
       gainNode = null;
       isPlaying = false;
+      reverbSessionStartTime = 0;
       updateUI();
     }, 60);
   }

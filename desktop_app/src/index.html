@@ -901,7 +901,7 @@ window.pywebview = window.pywebview || {};
   let currentGain = 0.85;
   let fieldDragSide = 'low';
   let lastFieldFullRatio = 0.25;
-  let reverbPhaseIsPink = true;
+  let reverbPhaseIsPink = false;
   let reverbPhasePollId = null;
 
   const svg = document.getElementById('knobSvg');
@@ -1196,26 +1196,38 @@ window.pywebview = window.pywebview || {};
 
   function startReverbPhaseVisualSync() {
     clearReverbPhasePoll();
-    function tick() {
-      if (!isPlaying || testMode !== 'reverb') {
-        clearReverbPhasePoll();
-        return;
-      }
-      if (window.pywebview && window.pywebview.api) {
-        try {
-          const phase = window.pywebview.api.get_pink_cycle_phase();
-          if (phase === 'pink' || phase === 'silence') {
-            const isPink = phase === 'pink';
-            if (isPink !== reverbPhaseIsPink) {
-              reverbPhaseIsPink = isPink;
-              updateUI();
+    let delayMs = 80;
+    if (window.pywebview && window.pywebview.api) {
+      try {
+        const lat = window.pywebview.api.get_output_latency_sec();
+        if (typeof lat === 'number' && lat > 0) {
+          delayMs = Math.min(800, Math.round(lat * 1000));
+        }
+      } catch (e) { /* api not ready */ }
+    }
+    setTimeout(() => {
+      if (!isPlaying || testMode !== 'reverb') return;
+      function tick() {
+        if (!isPlaying || testMode !== 'reverb') {
+          clearReverbPhasePoll();
+          return;
+        }
+        if (window.pywebview && window.pywebview.api) {
+          try {
+            const phase = window.pywebview.api.get_pink_cycle_phase();
+            if (phase === 'pink' || phase === 'silence') {
+              const isPink = phase === 'pink';
+              if (isPink !== reverbPhaseIsPink) {
+                reverbPhaseIsPink = isPink;
+                updateUI();
+              }
             }
-          }
-        } catch (e) { /* api not ready */ }
+          } catch (e) { /* api not ready */ }
+        }
+        reverbPhasePollId = requestAnimationFrame(tick);
       }
       reverbPhasePollId = requestAnimationFrame(tick);
-    }
-    reverbPhasePollId = requestAnimationFrame(tick);
+    }, delayMs);
   }
 
   function onVolumeInput(e) {
