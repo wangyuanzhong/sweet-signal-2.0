@@ -928,6 +928,7 @@
   let currentGain = 0.85;
   const MIN_DB = -60;
   const MAX_DB = 0;
+  const SWEEP_GAP_SEC = 1.0;
   let sweepTimer = null;
   let reverbTimer = null;
   let pinkNoiseSource = null;
@@ -1149,31 +1150,40 @@
   }
 
   // Log sweep: exponentialRampToValueAtTime on frequency gives equal time per octave (log f vs linear t).
-  function planSweepSegment(ctx, osc, tStart, fL, fH) {
+  function planSweepSegment(ctx, osc, gain, tStart, fL, fH, targetGain) {
     const dur = getSweepSec();
     const lo = Math.max(20, Math.min(fL, fH));
     const hi = Math.max(lo, Math.min(20000, Math.max(fL, fH)));
+    const tSweepEnd = tStart + dur;
+    const tNext = tSweepEnd + SWEEP_GAP_SEC;
+    gain.gain.setValueAtTime(targetGain, tStart);
     if (hi <= lo * 1.001) {
       osc.frequency.setValueAtTime(lo, tStart);
-      return tStart + dur;
+    } else {
+      osc.frequency.setValueAtTime(lo, tStart);
+      osc.frequency.exponentialRampToValueAtTime(hi, tSweepEnd);
     }
-    osc.frequency.setValueAtTime(lo, tStart);
-    osc.frequency.exponentialRampToValueAtTime(hi, tStart + dur);
-    return tStart + dur;
+    gain.gain.setValueAtTime(0, tSweepEnd);
+    gain.gain.setValueAtTime(targetGain, tNext);
+    return tNext;
   }
 
   function extendSweepSchedule() {
-    if (!isPlaying || testMode !== 'field' || !oscillator || !audioCtx) return;
+    if (!isPlaying || testMode !== 'field' || !oscillator || !audioCtx || !gainNode) return;
     const ctx = audioCtx;
     const osc = oscillator;
+    const gain = gainNode;
+    const targetGain = sliderToGain(currentGain * 100);
     const now = ctx.currentTime;
     osc.frequency.cancelScheduledValues(now);
+    gain.gain.cancelScheduledValues(now);
     let t = now + 0.02;
     for (let i = 0; i < 28; i++) {
-      t = planSweepSegment(ctx, osc, t, fLowField, fHighField);
+      t = planSweepSegment(ctx, osc, gain, t, fLowField, fHighField, targetGain);
     }
     clearSweepTimer();
-    const delay = Math.min(3000, Math.max(400, getSweepSec() * 350));
+    const cycleSec = getSweepSec() + SWEEP_GAP_SEC;
+    const delay = Math.min(3000, Math.max(400, cycleSec * 350));
     sweepTimer = setTimeout(extendSweepSchedule, delay);
   }
 

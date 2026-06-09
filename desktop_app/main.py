@@ -5,6 +5,9 @@ import threading
 import time
 import json
 
+SWEEP_GAP_SEC = 1.0
+
+
 class AudioEngine:
     def __init__(self):
         self.is_playing = False
@@ -133,23 +136,26 @@ class AudioEngine:
             f0 = max(20.0, min(f_low, f_high))
             f1 = max(f0, min(20000.0, max(f_low, f_high)))
             T = max(0.05, float(sweep_T))
+            cycle = T + SWEEP_GAP_SEC
 
             with self.lock:
                 n0 = self._sweep_sample_pos
                 self._sweep_sample_pos = n0 + frames
 
             idx = np.arange(frames, dtype=np.float64) + n0
-            t = (idx / sr) % T
+            t_cycle = (idx / sr) % cycle
+            in_sweep = t_cycle < T
 
             if f1 <= f0 * 1.000001:
                 f_inst = np.full(frames, f0)
             else:
                 # Logarithmic sweep: f = f0 * (f1/f0)^(t/T) => equal time per octave.
-                f_inst = f0 * (f1 / f0) ** (t / T)
+                t_sweep = np.where(in_sweep, t_cycle, 0.0)
+                f_inst = f0 * (f1 / f0) ** (t_sweep / T)
 
-            dphi = 2 * np.pi * f_inst / sr
+            dphi = np.where(in_sweep, 2 * np.pi * f_inst / sr, 0.0)
             phi_arr = self.phase + np.cumsum(dphi)
-            samples = np.sin(phi_arr) * vol
+            samples = np.sin(phi_arr) * vol * in_sweep.astype(np.float32)
             self.phase = float(phi_arr[-1] % (2 * np.pi))
         elif mode == "pink_cycle":
             # alternating pink noise and silence
