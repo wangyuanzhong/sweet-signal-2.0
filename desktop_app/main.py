@@ -5,7 +5,7 @@ import threading
 import time
 import json
 
-SWEEP_GAP_SEC = 1.0
+SWEEP_GAP_SEC = 1.5
 
 
 class AudioEngine:
