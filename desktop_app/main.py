@@ -5,13 +5,15 @@ import threading
 import time
 import json
 
+from programme_noise import synthesize as synthesize_programme
+
 SWEEP_GAP_SEC = 1.5
 
 
 class AudioEngine:
     def __init__(self):
         self.is_playing = False
-        self.mode = "tone"  # "tone" | "sweep" | "pink_cycle"
+        self.mode = "tone"  # "tone" | "sweep" | "pink_cycle" | "programme"
         self.frequency = 1000.0
         self.sweep_low = 100.0
         self.sweep_high = 10000.0
@@ -23,6 +25,9 @@ class AudioEngine:
         self._pink_lut_pos = 0
         self._pink_lut = None
         self._pink_lut_sr = 0
+        self._programme_lut = None
+        self._programme_lut_sr = 0
+        self._programme_pos = 0
         self.volume = 0.85
         self.last_db = -1.4
         self.sample_rate = 48000
@@ -177,6 +182,17 @@ class AudioEngine:
                 self._pink_cycle_pos = (cpos + frames) % cycle_len
                 self._pink_lut_pos = lpos
             samples = out1d
+        elif mode == "programme":
+            with self.lock:
+                lut = self._programme_lut
+                pos = self._programme_pos
+                if lut is not None:
+                    self._programme_pos = pos + frames
+            if lut is None:
+                samples = np.zeros(frames, dtype=np.float32)
+            else:
+                idx = (np.arange(frames) + pos) % len(lut)
+                samples = lut[idx] * np.float32(vol)
         else:
             samples = np.zeros(frames, dtype=np.float32)
 
@@ -298,6 +314,36 @@ class AudioEngine:
             print(f"启动粉噪周期失败: {e}")
             return False
 
+    def start_programme(self, db):
+        """GB/T 6278 模拟节目信号。dB 作用在有效值上，波形不削波。"""
+        with self.lock:
+            self.mode = "programme"
+            self.volume = self.db_to_gain(db)
+            self.last_db = float(db)
+            self.phase = 0.0
+            self._programme_pos = 0
+
+        if self.stream is not None:
+            self.stop()
+
+        try:
+            out_idx = self._effective_output_device()
+            sample_rate = self._samplerate_for_device(out_idx)
+            lut = np.asarray(synthesize_programme(sample_rate), dtype=np.float32)
+            with self.lock:
+                self.sample_rate = sample_rate
+                self._programme_lut = lut
+                self._programme_lut_sr = sample_rate
+                self._programme_pos = 0
+
+            self.stream = self._create_output_stream(out_idx, sample_rate)
+            self.stream.start()
+            self.is_playing = True
+            return True
+        except Exception as e:
+            print(f"启动节目信号失败: {e}")
+            return False
+
     def set_pink_durations(self, pink_sec, silence_sec):
         with self.lock:
             if self.mode != "pink_cycle":
@@ -374,6 +420,8 @@ class AudioEngine:
                 pk = self.pink_noise_duration
                 sl = self.silence_duration
                 self.start_pink_cycle(pk, sl, db)
+            elif mode == "programme":
+                self.start_programme(db)
             else:
                 self.start(self.frequency, db)
     
@@ -407,6 +455,10 @@ class Api:
     def start_pink_cycle(self, pink_sec, silence_sec, volume):
         """混响测量：粉噪与静音交替循环（时长单位：秒，volume 为 dB）。"""
         return self.audio.start_pink_cycle(pink_sec, silence_sec, volume)
+
+    def start_programme(self, volume):
+        """GB/T 6278 模拟节目信号（volume 为有效值 dB）。"""
+        return self.audio.start_programme(volume)
 
     def set_pink_durations(self, pink_sec, silence_sec):
         """混响测量：播放中调整粉噪/静音时长。"""

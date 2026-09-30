@@ -136,8 +136,51 @@
     --knob-cap-shadow: rgba(150, 155, 195, 0.26);
     --knob-ind-shadow: rgba(120, 125, 160, 0.22);
   }
+  html.theme-programme {
+    --bg-top: #fff6ee;
+    --bg-bottom: #e7f6ef;
+    --card-bg: rgba(255, 252, 248, 0.62);
+    --card-border: rgba(255, 255, 255, 0.84);
+    --text-main: #53463c;
+    --text-muted: #8f8174;
+    --accent-pink: #ffc7a3;
+    --accent-mint: #b7e4c7;
+    --accent-lavender: #ffe0c2;
+    --accent-cream: #ffe8d6;
+    --accent-sky: #d8f3e4;
+    --shadow-soft: 0 12px 40px rgba(170, 130, 100, 0.12);
+    --shadow-inset: inset 0 2px 8px rgba(160, 120, 90, 0.08);
+    --knob-0: #ffc7a3;
+    --knob-1: #9ed9b5;
+    --cap-0: #fffaf6;
+    --cap-1: #ffe8d4;
+    --icon-stop-end: #f0b48a;
+    --select-focus-ring: rgba(158, 217, 181, 0.4);
+    --slider-0: #ffc7a3;
+    --slider-1: #9ed9b5;
+    --btn-play-1: #8dccaa;
+    --btn-playing-0: #ffd7bf;
+    --btn-playing-1: #ffc4a6;
+    --btn-stop-0: #f0c2a4;
+    --btn-stop-1: #e7b08c;
+    --device-box-0: rgba(255, 199, 163, 0.22);
+    --device-box-1: rgba(158, 217, 181, 0.2);
+    --device-border: rgba(220, 170, 130, 0.45);
+    --perm-btn-shadow: rgba(190, 140, 100, 0.28);
+    --perm-btn-text: #4a3b32;
+    --mode-dot-ring: #f0c09a;
+    --mode-dot-glow: rgba(255, 200, 160, 0.45);
+    --mode-dot-core-mint: #9ed9b5;
+    --thumb-shadow: rgba(150, 120, 95, 0.32);
+    --reverb-glow-a: rgba(255, 190, 150, 0.45);
+    --reverb-glow-b: rgba(158, 217, 181, 0.35);
+    --reverb-glow-cap: rgba(255, 190, 150, 0.5);
+    --reverb-glow-fill: rgba(255, 200, 160, 0.4);
+    --knob-cap-shadow: rgba(180, 130, 90, 0.26);
+    --knob-ind-shadow: rgba(140, 110, 85, 0.22);
+  }
 
-  /* 输出电平卡片：三种模式统一为电声单卡同款高度（声场双卡并排同高） */
+  /* 输出电平卡片：各模式统一为电声单卡同款高度（声场双卡并排同高） */
   html {
     --volume-row-height: 5.5rem;
   }
@@ -214,15 +257,15 @@
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 18px 22px;
-    margin-bottom: 22px;
+    gap: 8px 12px;
+    margin-bottom: 18px;
   }
   .mode-option {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     cursor: pointer;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-main);
     user-select: none;
@@ -420,6 +463,44 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
+  }
+  .programme-badge {
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 50% 40%, var(--cap-0) 0%, var(--cap-1) 58%, var(--knob-0) 100%);
+    box-shadow:
+      0 10px 24px var(--knob-cap-shadow),
+      inset 0 0 0 12px rgba(255, 255, 255, 0.45);
+  }
+  .programme-mark { text-align: center; }
+  .programme-kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .programme-title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 2.15rem;
+    line-height: 1;
+    margin-top: 4px;
+    color: var(--text-main);
+  }
+  .programme-sub {
+    margin-top: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  #panelProgramme.is-programme-playing .programme-badge {
+    animation: programmePulse 2.6s ease-in-out infinite;
+  }
+  @keyframes programmePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.018); }
   }
 
   .knob-wrapper {
@@ -777,7 +858,7 @@
 
   <div class="container">
     <h1>Sweet Signal</h1>
-    <div class="subtitle">Pure Tone Generator</div>
+    <div class="subtitle" id="appSubtitle">Pure Tone Generator</div>
 
     <div class="mode-row" role="radiogroup" aria-label="测试模式">
       <label class="mode-option">
@@ -791,6 +872,10 @@
       <label class="mode-option">
         <input type="radio" name="testMode" value="reverb">
         <span class="mode-dot" aria-hidden="true"></span>混响测量
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="testMode" value="programme">
+        <span class="mode-dot" aria-hidden="true"></span>节目信号
       </label>
     </div>
 
@@ -852,6 +937,20 @@
         <span id="fieldKnobLabelHigh">10 kHz</span>
       </div>
       <p id="reverbPhaseBanner" class="reverb-phase-banner hidden" aria-live="polite"></p>
+    </div>
+
+    <div id="panelProgramme" class="mode-knob-panel hidden">
+      <div class="knob-wrapper programme-badge" id="programmeBadge">
+        <div class="programme-mark">
+          <div class="programme-kicker">GB/T 6278</div>
+          <div class="programme-title">节目</div>
+          <div class="programme-sub">模拟噪声</div>
+        </div>
+      </div>
+      <div class="knob-labels">
+        <span>20 Hz</span>
+        <span>20 kHz</span>
+      </div>
     </div>
 
     <!-- Output Device + Volume -->
@@ -919,6 +1018,7 @@
     </div>
   </div>
 
+<script src="programme_noise.js"></script>
 <script>
 (function() {
   let audioCtx = null;
@@ -934,6 +1034,8 @@
   let pinkNoiseSource = null;
   let pinkBufferCache = null;
   let pinkBufferSr = 0;
+  let programmeBuffer = null;
+  let programmeBufferSr = 0;
   let reverbPhaseIsPink = false;
   let reverbPhasePollId = null;
   let reverbSessionStartTime = 0;
@@ -1321,6 +1423,50 @@
     startReverbPhaseVisualSync();
   }
 
+  function getProgrammeBuffer(ctx) {
+    if (programmeBuffer && programmeBufferSr === ctx.sampleRate) return programmeBuffer;
+    const samples = ProgrammeNoise.synthesize(ctx.sampleRate, 18);
+    const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+    buffer.copyToChannel(samples, 0);
+    programmeBuffer = buffer;
+    programmeBufferSr = ctx.sampleRate;
+    return buffer;
+  }
+
+  function startProgramme() {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    clearSweepTimer();
+    clearReverbCycle();
+    if (oscillator) {
+      try { oscillator.stop(); } catch (e) {}
+      try { oscillator.disconnect(); } catch (e) {}
+      oscillator = null;
+    }
+    if (pinkNoiseSource) {
+      try { pinkNoiseSource.stop(); } catch (e) {}
+      try { pinkNoiseSource.disconnect(); } catch (e) {}
+      pinkNoiseSource = null;
+    }
+    if (gainNode) {
+      try { gainNode.disconnect(); } catch (e) {}
+    }
+
+    const buf = getProgrammeBuffer(ctx);
+    pinkNoiseSource = ctx.createBufferSource();
+    pinkNoiseSource.buffer = buf;
+    pinkNoiseSource.loop = true;
+    gainNode = ctx.createGain();
+    const targetGain = sliderToGain(currentGain * 100);
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + 0.05);
+    pinkNoiseSource.connect(gainNode);
+    connectOutput();
+    pinkNoiseSource.start(0);
+    isPlaying = true;
+    updateUI();
+  }
+
   function updateGain() {
     if (!gainNode || !audioCtx) return;
     if (testMode === 'reverb' && !reverbPhaseIsPink) return;
@@ -1401,6 +1547,10 @@
         const phaseLabel = !isPlaying ? '—' : (reverbPhaseIsPink ? '粉噪' : '静音');
         sweepSub.textContent = phaseLabel;
       }
+    }
+    const panelProgramme = document.getElementById('panelProgramme');
+    if (panelProgramme) {
+      panelProgramme.classList.toggle('is-programme-playing', testMode === 'programme' && isPlaying);
     }
   }
 
@@ -1665,14 +1815,16 @@
     const electro = testMode === 'electro';
     const field = testMode === 'field';
     const reverb = testMode === 'reverb';
+    const programme = testMode === 'programme';
     const root = document.documentElement;
-    root.classList.remove('theme-electro', 'theme-field', 'theme-reverb');
+    root.classList.remove('theme-electro', 'theme-field', 'theme-reverb', 'theme-programme');
     root.classList.add('theme-' + testMode);
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
+    document.getElementById('panelProgramme').classList.toggle('hidden', !programme);
     const panelField = document.getElementById('panelField');
     panelField.classList.toggle('hidden', !field && !reverb);
     panelField.classList.toggle('reverb-step-mode', reverb);
-    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
+    document.getElementById('volumeRowElectro').classList.toggle('hidden', field);
     document.getElementById('volumeRowField').classList.toggle('hidden', !field);
     if (electro) {
       volumeSlider.value = volumeSliderField.value;
@@ -1685,10 +1837,16 @@
     renderFieldKnob();
     updateUI();
     const hint = document.getElementById('hintText');
+    const subtitle = document.getElementById('appSubtitle');
+    if (subtitle) {
+      subtitle.textContent = programme ? 'GB/T 6278 Programme Noise' : 'Pure Tone Generator';
+    }
     if (electro) {
       hint.textContent = '拖拽旋钮或点击调节频率';
     } else if (field) {
       hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
+    } else if (programme) {
+      hint.textContent = 'GB/T 6278 模拟节目信号：粉红噪声经标准计权，不削波。这里的 dBFS 是有效值；高于 −14 dBFS 时峰值可能削波。';
     } else {
       hint.textContent = '与声场相同的双弧圆钮：两枚触点分别调粉噪播放时长与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
     }
@@ -1711,6 +1869,8 @@
       startTone(frequency);
     } else if (mode === 'field') {
       startSweep();
+    } else if (mode === 'programme') {
+      startProgramme();
     } else {
       startReverb();
     }
