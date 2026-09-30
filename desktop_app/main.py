@@ -5,7 +5,7 @@ import threading
 import time
 import json
 
-from programme_noise import synthesize as synthesize_programme
+from programme_noise import apply_bandpass, synthesize as synthesize_programme
 
 SWEEP_GAP_SEC = 1.5
 
@@ -28,6 +28,10 @@ class AudioEngine:
         self._programme_lut = None
         self._programme_lut_sr = 0
         self._programme_pos = 0
+        self._programme_full = None
+        self._programme_full_sr = 0
+        self._programme_f_low = 20.0
+        self._programme_f_high = 20000.0
         self.volume = 0.85
         self.last_db = -1.4
         self.sample_rate = 48000
@@ -329,7 +333,7 @@ class AudioEngine:
         try:
             out_idx = self._effective_output_device()
             sample_rate = self._samplerate_for_device(out_idx)
-            lut = np.asarray(synthesize_programme(sample_rate), dtype=np.float32)
+            lut = self._programme_playback_lut(sample_rate)
             with self.lock:
                 self.sample_rate = sample_rate
                 self._programme_lut = lut
@@ -343,6 +347,31 @@ class AudioEngine:
         except Exception as e:
             print(f"启动节目信号失败: {e}")
             return False
+
+    def _programme_playback_lut(self, sample_rate):
+        if self._programme_full is None or self._programme_full_sr != int(sample_rate):
+            self._programme_full = synthesize_programme(sample_rate)
+            self._programme_full_sr = int(sample_rate)
+        banded = apply_bandpass(
+            self._programme_full,
+            sample_rate,
+            self._programme_f_low,
+            self._programme_f_high,
+        )
+        return np.asarray(banded, dtype=np.float32)
+
+    def set_programme_band(self, f_low, f_high):
+        """带通接在节目噪声后面。全带（20 Hz–20 kHz）时不滤波。"""
+        with self.lock:
+            self._programme_f_low = float(f_low)
+            self._programme_f_high = float(f_high)
+            sr = self.sample_rate
+            active = self.mode == "programme" and self._programme_full is not None
+        if not active:
+            return
+        lut = self._programme_playback_lut(sr)
+        with self.lock:
+            self._programme_lut = lut
 
     def set_pink_durations(self, pink_sec, silence_sec):
         with self.lock:
@@ -459,6 +488,10 @@ class Api:
     def start_programme(self, volume):
         """GB/T 6278 模拟节目信号（volume 为有效值 dB）。"""
         return self.audio.start_programme(volume)
+
+    def set_programme_band(self, f_low, f_high):
+        """节目噪声后面的带通，单位 Hz。"""
+        self.audio.set_programme_band(f_low, f_high)
 
     def set_pink_durations(self, pink_sec, silence_sec):
         """混响测量：播放中调整粉噪/静音时长。"""

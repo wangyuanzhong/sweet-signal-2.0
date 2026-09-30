@@ -493,8 +493,18 @@
     font-weight: 700;
     color: var(--text-muted);
   }
-  #panelProgramme.is-programme-playing .programme-badge {
-    animation: programmePulse 2.6s ease-in-out infinite;
+  #programmeKnobSvg .knob-fill { stroke: url(#knobGradientProgramme); }
+  #programmeKnobSvg .knob-cap { fill: url(#capGradientProgramme); }
+  #programmeSub {
+    opacity: 1;
+    margin-top: 6px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--text-main);
+  }
+  #panelProgramme.is-programme-playing #programmeKnobSvg .knob-cap {
+    filter: drop-shadow(0 6px 14px var(--knob-cap-shadow)) drop-shadow(0 0 16px var(--knob-1));
   }
   @keyframes programmePulse {
     0%, 100% { transform: scale(1); }
@@ -904,16 +914,32 @@
     </div>
 
     <div id="panelProgramme" class="mode-knob-panel hidden">
-      <div class="knob-wrapper programme-badge" id="programmeBadge">
-        <div class="programme-mark">
-          <div class="programme-kicker">GB/T 6278</div>
-          <div class="programme-title">节目</div>
-          <div class="programme-sub">模拟噪声</div>
+      <div class="knob-wrapper" id="programmeBadge">
+        <svg class="knob-svg" viewBox="0 0 220 220" id="programmeKnobSvg">
+          <defs>
+            <linearGradient id="knobGradientProgramme" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="var(--knob-0)"/>
+              <stop offset="100%" stop-color="var(--knob-1)"/>
+            </linearGradient>
+            <linearGradient id="capGradientProgramme" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="var(--cap-0)"/>
+              <stop offset="100%" stop-color="var(--cap-1)"/>
+            </linearGradient>
+          </defs>
+          <path class="knob-track" id="programmeKnobTrack" d=""/>
+          <path class="knob-fill" id="programmeKnobFill" d=""/>
+          <circle class="knob-cap" cx="110" cy="110" r="72"/>
+          <circle class="knob-indicator" id="programmeIndLow" cx="110" cy="50" r="6"/>
+          <circle class="knob-indicator" id="programmeIndHigh" cx="110" cy="50" r="6"/>
+        </svg>
+        <div class="freq-display">
+          <div class="freq-value sweep-label" id="programmeTitle">节目</div>
+          <div class="freq-unit sweep-label-unit" id="programmeSub">全带</div>
         </div>
       </div>
       <div class="knob-labels">
-        <span>20 Hz</span>
-        <span>20 kHz</span>
+        <span id="programmeLabelLow">20 Hz</span>
+        <span id="programmeLabelHigh">20 kHz</span>
       </div>
     </div>
 
@@ -995,6 +1021,10 @@ window.pywebview = window.pywebview || {};
 
   let fLowField = 100;
   let fHighField = 10000;
+  let fLowProg = 20;
+  let fHighProg = 20000;
+  const MIN_BAND_RATIO = Math.pow(2, 1 / 6);
+  let programmeBandTimer = null;
 
   let isPlaying = false;
   let currentGain = 0.85;
@@ -1005,6 +1035,7 @@ window.pywebview = window.pywebview || {};
 
   const svg = document.getElementById('knobSvg');
   const fieldSvg = document.getElementById('fieldKnobSvg');
+  const programmeSvg = document.getElementById('programmeKnobSvg');
 
   function freqToRatio(f) {
     return (Math.log10(f) - Math.log10(MIN_FREQ)) / (Math.log10(MAX_FREQ) - Math.log10(MIN_FREQ));
@@ -1130,6 +1161,70 @@ window.pywebview = window.pywebview || {};
     document.getElementById('fieldKnobLabelHigh').textContent = formatBandEdgeLabel(fHighField);
   }
 
+  function programmeBandIsFull() {
+    return fLowProg <= 20.5 && fHighProg >= 19900;
+  }
+
+  function renderProgrammeKnob() {
+    const track = document.getElementById('programmeKnobTrack');
+    if (!track) return;
+    track.setAttribute('d', describeArc(cx, cy, R, startAngle, endAngle));
+    const span = endAngle - startAngle;
+    const rL = freqToRatio(fLowProg);
+    const rH = freqToRatio(fHighProg);
+    const angleLow = startAngle + rL * span;
+    const angleHigh = startAngle + rH * span;
+    const a0 = Math.min(angleLow, angleHigh);
+    const a1 = Math.max(angleLow, angleHigh);
+    document.getElementById('programmeKnobFill').setAttribute('d', describeArc(cx, cy, R, a0, a1));
+    const il = polar(cx, cy, capR - 18, angleLow);
+    const ih = polar(cx, cy, capR - 18, angleHigh);
+    document.getElementById('programmeIndLow').setAttribute('cx', il.x);
+    document.getElementById('programmeIndLow').setAttribute('cy', il.y);
+    document.getElementById('programmeIndHigh').setAttribute('cx', ih.x);
+    document.getElementById('programmeIndHigh').setAttribute('cy', ih.y);
+    document.getElementById('programmeLabelLow').textContent = formatBandEdgeLabel(fLowProg);
+    document.getElementById('programmeLabelHigh').textContent = formatBandEdgeLabel(fHighProg);
+    const sub = document.getElementById('programmeSub');
+    if (sub) sub.textContent = programmeBandIsFull() ? '全带' : '带通';
+  }
+
+  function setProgrammeEdge(which, fPoint) {
+    if (which === 'low') {
+      fLowProg = Math.max(20, Math.min(fPoint, fHighProg / MIN_BAND_RATIO));
+    } else {
+      fHighProg = Math.min(20000, Math.max(fPoint, fLowProg * MIN_BAND_RATIO));
+    }
+  }
+
+  function scheduleProgrammeBand() {
+    renderProgrammeKnob();
+    if (programmeBandTimer) clearTimeout(programmeBandTimer);
+    programmeBandTimer = setTimeout(() => {
+      programmeBandTimer = null;
+      if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.set_programme_band(fLowProg, fHighProg);
+      }
+    }, 90);
+  }
+
+  function applyProgrammeDrag(e, svgEl) {
+    const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
+    lastFieldFullRatio = rPoint;
+    setProgrammeEdge(fieldDragSide, ratioToFreq(rPoint));
+    scheduleProgrammeBand();
+  }
+
+  function pickProgrammeHandle(e, svgEl) {
+    const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
+    lastFieldFullRatio = rPoint;
+    const rLow = freqToRatio(fLowProg);
+    const rHigh = freqToRatio(fHighProg);
+    fieldDragSide = Math.abs(rPoint - rLow) <= Math.abs(rPoint - rHigh) ? 'low' : 'high';
+    setProgrammeEdge(fieldDragSide, ratioToFreq(rPoint));
+    scheduleProgrammeBand();
+  }
+
   function applyFieldDragFromEvent(e, svg) {
     const rPoint = getFullArcRatio(e, svg, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
@@ -1220,6 +1315,8 @@ window.pywebview = window.pywebview || {};
       }
     } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
+    } else if (dragTarget === 'programme-knob' && testMode === 'programme') {
+      applyProgrammeDrag(e, programmeSvg);
     }
   });
   window.addEventListener('mouseup', () => { dragTarget = null; });
@@ -1243,6 +1340,9 @@ window.pywebview = window.pywebview || {};
     } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
       e.preventDefault();
+    } else if (dragTarget === 'programme-knob' && testMode === 'programme') {
+      applyProgrammeDrag(e, programmeSvg);
+      e.preventDefault();
     }
   }, { passive: false });
   window.addEventListener('touchend', () => { dragTarget = null; });
@@ -1258,6 +1358,18 @@ window.pywebview = window.pywebview || {};
     if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
+    e.preventDefault();
+  }, { passive: false });
+
+  programmeSvg.addEventListener('mousedown', (e) => {
+    if (testMode !== 'programme') return;
+    dragTarget = 'programme-knob';
+    pickProgrammeHandle(e, programmeSvg);
+  });
+  programmeSvg.addEventListener('touchstart', (e) => {
+    if (testMode !== 'programme') return;
+    dragTarget = 'programme-knob';
+    pickProgrammeHandle(e, programmeSvg);
     e.preventDefault();
   }, { passive: false });
 
@@ -1414,6 +1526,7 @@ window.pywebview = window.pywebview || {};
     }
     updateVolumeDisplays();
     renderFieldKnob();
+    renderProgrammeKnob();
     updateUI();
     const hint = document.getElementById('hintText');
     const subtitle = document.getElementById('appSubtitle');
@@ -1425,7 +1538,7 @@ window.pywebview = window.pywebview || {};
     } else if (field) {
       hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
     } else if (programme) {
-      hint.textContent = 'GB/T 6278 模拟节目信号：粉红噪声经标准计权，不削波。这里的 dBFS 是有效值；高于 −14 dBFS 时峰值可能削波。';
+      hint.textContent = '两枚触点是带通下限和上限（24 dB/oct），接在节目噪声后面。两端在 20 Hz 和 20 kHz 时为全带。dBFS 是滤波后的有效值。';
     } else {
       hint.textContent = '与声场相同的双弧圆钮：两枚触点分别调粉噪播放时长与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
     }
@@ -1553,6 +1666,7 @@ window.pywebview = window.pywebview || {};
 
   renderKnob();
   renderFieldKnob();
+  renderProgrammeKnob();
   updateVolumeDisplays();
   updateSweepDurationLabel();
   updatePinkSilenceLabels();

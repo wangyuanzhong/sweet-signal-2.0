@@ -103,6 +103,116 @@ def spectrum_fits_gbt6278(levels_db):
     return bool(lo <= hi), float(hi - lo)
 
 
+# 24 dB/octave Butterworth, the slope used for band-limited loudspeaker noise.
+BANDPASS_ORDER = 4
+BAND_MIN_HZ = 20.0
+BAND_MAX_HZ = 20000.0
+# Handles cannot sit closer than one 1/3-octave, so the passband stays real.
+MIN_BAND_RATIO = 2.0 ** (1.0 / 6.0)
+
+
+def _section_q(section_index):
+    """Q of one second-order section in a 4th-order Butterworth cascade."""
+    return 1.0 / (2.0 * np.sin((2.0 * section_index - 1.0) * np.pi / (2.0 * BANDPASS_ORDER)))
+
+
+def normalize_band(f_low, f_high, fs):
+    """Clamp cutoffs into 20 Hz .. min(20 kHz, 0.98*Nyquist) and keep them apart."""
+    hi_lim = min(BAND_MAX_HZ, 0.98 * float(fs) / 2.0)
+    lo = float(f_low)
+    hi = float(f_high)
+    if not np.isfinite(lo):
+        lo = BAND_MIN_HZ
+    if not np.isfinite(hi):
+        hi = hi_lim
+    lo = min(max(lo, BAND_MIN_HZ), hi_lim)
+    hi = min(max(hi, BAND_MIN_HZ), hi_lim)
+    if hi < lo * MIN_BAND_RATIO:
+        hi = min(hi_lim, lo * MIN_BAND_RATIO)
+        if hi < lo * MIN_BAND_RATIO:
+            lo = max(BAND_MIN_HZ, hi / MIN_BAND_RATIO)
+    return lo, hi
+
+
+def band_is_full(f_low, f_high):
+    """True when the knob is at both ends and the programme spectrum must stay untouched."""
+    return float(f_low) <= 20.5 and float(f_high) >= 19900.0
+
+
+def _rbj_section(kind, f0, fs, q):
+    """Bilinear lowpass or highpass biquad, a0 normalised to 1. Returns b0,b1,b2,1,a1,a2."""
+    w0 = 2.0 * np.pi * float(f0) / float(fs)
+    cw = np.cos(w0)
+    alpha = np.sin(w0) / (2.0 * q)
+    if kind == "low":
+        b0 = (1.0 - cw) / 2.0
+        b1 = 1.0 - cw
+        b2 = (1.0 - cw) / 2.0
+    else:
+        b0 = (1.0 + cw) / 2.0
+        b1 = -(1.0 + cw)
+        b2 = (1.0 + cw) / 2.0
+    a0 = 1.0 + alpha
+    a1 = -2.0 * cw
+    a2 = 1.0 - alpha
+    return (b0 / a0, b1 / a0, b2 / a0, 1.0, a1 / a0, a2 / a0)
+
+
+def bandpass_sos(fs, f_low, f_high):
+    """Four biquads: two highpass then two lowpass. Empty when the band is full-span."""
+    f_low, f_high = normalize_band(f_low, f_high, fs)
+    if band_is_full(f_low, f_high):
+        return ()
+    sections = []
+    for k in (1, 2):
+        q = _section_q(k)
+        sections.append(_rbj_section("high", f_low, fs, q))
+        sections.append(_rbj_section("low", f_high, fs, q))
+    return tuple(sections)
+
+
+def bandpass_response(freqs, fs, f_low, f_high):
+    """Complex gain of the bandpass placed after the programme source."""
+    freqs = np.asarray(freqs, dtype=np.float64)
+    sections = bandpass_sos(fs, f_low, f_high)
+    if not sections:
+        return np.ones(freqs.shape, dtype=np.complex128)
+    # z^-1. At 0 Hz this is 1, and the highpass numerator is zero there.
+    w = 2.0 * np.pi * freqs / float(fs)
+    zm1 = np.exp(-1j * w)
+    zm2 = zm1 * zm1
+    h = np.ones(freqs.shape, dtype=np.complex128)
+    for b0, b1, b2, a0, a1, a2 in sections:
+        h *= (b0 + b1 * zm1 + b2 * zm2) / (a0 + a1 * zm1 + a2 * zm2)
+    return h
+
+
+def apply_bandpass(samples, fs, f_low, f_high):
+    """Filter one periodic programme buffer and restore RMS to 1.
+
+    Full-span cutoffs (20 Hz and 20 kHz) return the source unchanged, so the
+    GB/T 6278 spectrum is not tilted by a filter parked at the band edges.
+    Narrower cutoffs are applied to the source spectrum, then the result is
+    scaled so the displayed level remains the RMS after the filter.
+    """
+    samples = np.asarray(samples, dtype=np.float64)
+    f_low, f_high = normalize_band(f_low, f_high, fs)
+    if band_is_full(f_low, f_high):
+        rms = float(np.sqrt(np.mean(samples * samples)))
+        if rms <= 0.0:
+            raise RuntimeError("programme buffer is silent")
+        return samples / rms
+    n = samples.shape[0]
+    spectrum = np.fft.rfft(samples)
+    freqs = np.fft.rfftfreq(n, d=1.0 / float(fs))
+    spectrum *= bandpass_response(freqs, fs, f_low, f_high)
+    filtered = np.fft.irfft(spectrum, n=n)
+    rms = float(np.sqrt(np.mean(filtered * filtered)))
+    if rms <= 0.0:
+        raise RuntimeError("bandpass removed the programme signal")
+    return filtered / rms
+
+
 def synthesize(fs, n_pow=18, seed=6278):
     """One seamless period of programme noise, RMS normalised to 1.
 
