@@ -136,8 +136,51 @@
     --knob-cap-shadow: rgba(150, 155, 195, 0.26);
     --knob-ind-shadow: rgba(120, 125, 160, 0.22);
   }
+  html.theme-programme {
+    --bg-top: #fff6ee;
+    --bg-bottom: #e7f6ef;
+    --card-bg: rgba(255, 252, 248, 0.62);
+    --card-border: rgba(255, 255, 255, 0.84);
+    --text-main: #53463c;
+    --text-muted: #8f8174;
+    --accent-pink: #ffc7a3;
+    --accent-mint: #b7e4c7;
+    --accent-lavender: #ffe0c2;
+    --accent-cream: #ffe8d6;
+    --accent-sky: #d8f3e4;
+    --shadow-soft: 0 12px 40px rgba(170, 130, 100, 0.12);
+    --shadow-inset: inset 0 2px 8px rgba(160, 120, 90, 0.08);
+    --knob-0: #ffc7a3;
+    --knob-1: #9ed9b5;
+    --cap-0: #fffaf6;
+    --cap-1: #ffe8d4;
+    --icon-stop-end: #f0b48a;
+    --select-focus-ring: rgba(158, 217, 181, 0.4);
+    --slider-0: #ffc7a3;
+    --slider-1: #9ed9b5;
+    --btn-play-1: #8dccaa;
+    --btn-playing-0: #ffd7bf;
+    --btn-playing-1: #ffc4a6;
+    --btn-stop-0: #f0c2a4;
+    --btn-stop-1: #e7b08c;
+    --device-box-0: rgba(255, 199, 163, 0.22);
+    --device-box-1: rgba(158, 217, 181, 0.2);
+    --device-border: rgba(220, 170, 130, 0.45);
+    --perm-btn-shadow: rgba(190, 140, 100, 0.28);
+    --perm-btn-text: #4a3b32;
+    --mode-dot-ring: #f0c09a;
+    --mode-dot-glow: rgba(255, 200, 160, 0.45);
+    --mode-dot-core-mint: #9ed9b5;
+    --thumb-shadow: rgba(150, 120, 95, 0.32);
+    --reverb-glow-a: rgba(255, 190, 150, 0.45);
+    --reverb-glow-b: rgba(158, 217, 181, 0.35);
+    --reverb-glow-cap: rgba(255, 190, 150, 0.5);
+    --reverb-glow-fill: rgba(255, 200, 160, 0.4);
+    --knob-cap-shadow: rgba(180, 130, 90, 0.26);
+    --knob-ind-shadow: rgba(140, 110, 85, 0.22);
+  }
 
-  /* 输出电平卡片：三种模式统一为电声单卡同款高度（声场双卡并排同高） */
+  /* 输出电平卡片：各模式统一为电声单卡同款高度（声场双卡并排同高） */
   html {
     --volume-row-height: 5.5rem;
   }
@@ -214,15 +257,15 @@
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 18px 22px;
-    margin-bottom: 22px;
+    gap: 8px 12px;
+    margin-bottom: 18px;
   }
   .mode-option {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     cursor: pointer;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-main);
     user-select: none;
@@ -420,6 +463,54 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
+  }
+  .programme-badge {
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(circle at 50% 40%, var(--cap-0) 0%, var(--cap-1) 58%, var(--knob-0) 100%);
+    box-shadow:
+      0 10px 24px var(--knob-cap-shadow),
+      inset 0 0 0 12px rgba(255, 255, 255, 0.45);
+  }
+  .programme-mark { text-align: center; }
+  .programme-kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .programme-title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 2.15rem;
+    line-height: 1;
+    margin-top: 4px;
+    color: var(--text-main);
+  }
+  .programme-sub {
+    margin-top: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  #programmeKnobSvg .knob-fill { stroke: url(#knobGradientProgramme); }
+  #programmeKnobSvg .knob-cap { fill: url(#capGradientProgramme); }
+  #programmeSub {
+    opacity: 1;
+    margin-top: 6px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--text-main);
+  }
+  #panelProgramme.is-programme-playing #programmeKnobSvg .knob-cap {
+    filter: drop-shadow(0 6px 14px var(--knob-cap-shadow)) drop-shadow(0 0 16px var(--knob-1));
+  }
+  @keyframes programmePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.018); }
   }
 
   .knob-wrapper {
@@ -777,7 +868,7 @@
 
   <div class="container">
     <h1>Sweet Signal</h1>
-    <div class="subtitle">Pure Tone Generator</div>
+    <div class="subtitle" id="appSubtitle">Pure Tone Generator</div>
 
     <div class="mode-row" role="radiogroup" aria-label="测试模式">
       <label class="mode-option">
@@ -791,6 +882,10 @@
       <label class="mode-option">
         <input type="radio" name="testMode" value="reverb">
         <span class="mode-dot" aria-hidden="true"></span>混响测量
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="testMode" value="programme">
+        <span class="mode-dot" aria-hidden="true"></span>节目信号
       </label>
     </div>
 
@@ -852,6 +947,36 @@
         <span id="fieldKnobLabelHigh">10 kHz</span>
       </div>
       <p id="reverbPhaseBanner" class="reverb-phase-banner hidden" aria-live="polite"></p>
+    </div>
+
+    <div id="panelProgramme" class="mode-knob-panel hidden">
+      <div class="knob-wrapper" id="programmeBadge">
+        <svg class="knob-svg" viewBox="0 0 220 220" id="programmeKnobSvg">
+          <defs>
+            <linearGradient id="knobGradientProgramme" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="var(--knob-0)"/>
+              <stop offset="100%" stop-color="var(--knob-1)"/>
+            </linearGradient>
+            <linearGradient id="capGradientProgramme" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="var(--cap-0)"/>
+              <stop offset="100%" stop-color="var(--cap-1)"/>
+            </linearGradient>
+          </defs>
+          <path class="knob-track" id="programmeKnobTrack" d=""/>
+          <path class="knob-fill" id="programmeKnobFill" d=""/>
+          <circle class="knob-cap" cx="110" cy="110" r="72"/>
+          <circle class="knob-indicator" id="programmeIndLow" cx="110" cy="50" r="6"/>
+          <circle class="knob-indicator" id="programmeIndHigh" cx="110" cy="50" r="6"/>
+        </svg>
+        <div class="freq-display">
+          <div class="freq-value sweep-label" id="programmeTitle">节目</div>
+          <div class="freq-unit sweep-label-unit" id="programmeSub">全带</div>
+        </div>
+      </div>
+      <div class="knob-labels">
+        <span id="programmeLabelLow">20 Hz</span>
+        <span id="programmeLabelHigh">20 kHz</span>
+      </div>
     </div>
 
     <!-- Output Device + Volume -->
@@ -919,6 +1044,7 @@
     </div>
   </div>
 
+<script src="programme_noise.js"></script>
 <script>
 (function() {
   let audioCtx = null;
@@ -934,6 +1060,8 @@
   let pinkNoiseSource = null;
   let pinkBufferCache = null;
   let pinkBufferSr = 0;
+  let programmeBuffer = null;
+  let programmeBufferSr = 0;
   let reverbPhaseIsPink = false;
   let reverbPhasePollId = null;
   let reverbSessionStartTime = 0;
@@ -945,6 +1073,12 @@
   let knobRatio = freqToRatio(frequency);
   let fLowField = 100;
   let fHighField = 10000;
+  let fLowProg = 20;
+  let fHighProg = 20000;
+  const MIN_BAND_RATIO = Math.pow(2, 1 / 6);
+  let programmeRaw = null;
+  let programmeRawSr = 0;
+  let programmeBandTimer = null;
   let fieldDragSide = 'low';
   let lastFieldFullRatio = 0.25;
   let dragTarget = null;
@@ -956,6 +1090,7 @@
 
   const svg = document.getElementById('knobSvg');
   const fieldSvg = document.getElementById('fieldKnobSvg');
+  const programmeSvg = document.getElementById('programmeKnobSvg');
 
   function getAudioCtx() {
     if (!audioCtx) {
@@ -1321,6 +1456,80 @@
     startReverbPhaseVisualSync();
   }
 
+  function programmeSourceSamples(ctx) {
+    if (!programmeRaw || programmeRawSr !== ctx.sampleRate) {
+      programmeRaw = ProgrammeNoise.synthesize(ctx.sampleRate, 18);
+      programmeRawSr = ctx.sampleRate;
+    }
+    return ProgrammeNoise.applyBandpass(programmeRaw, ctx.sampleRate, fLowProg, fHighProg);
+  }
+
+  function getProgrammeBuffer(ctx) {
+    const samples = programmeSourceSamples(ctx);
+    const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+    buffer.copyToChannel(samples, 0);
+    programmeBuffer = buffer;
+    programmeBufferSr = ctx.sampleRate;
+    return buffer;
+  }
+
+  function swapProgrammeBuffer() {
+    if (!isPlaying || testMode !== 'programme' || !audioCtx || !gainNode || !pinkNoiseSource) return;
+    const ctx = audioCtx;
+    const next = ctx.createBufferSource();
+    next.buffer = getProgrammeBuffer(ctx);
+    next.loop = true;
+    next.connect(gainNode);
+    const prev = pinkNoiseSource;
+    next.start();
+    pinkNoiseSource = next;
+    try { prev.stop(); } catch (e) {}
+    try { prev.disconnect(); } catch (e) {}
+  }
+
+  function scheduleProgrammeBand() {
+    renderProgrammeKnob();
+    if (programmeBandTimer) clearTimeout(programmeBandTimer);
+    programmeBandTimer = setTimeout(() => {
+      programmeBandTimer = null;
+      swapProgrammeBuffer();
+    }, 90);
+  }
+
+  function startProgramme() {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    clearSweepTimer();
+    clearReverbCycle();
+    if (oscillator) {
+      try { oscillator.stop(); } catch (e) {}
+      try { oscillator.disconnect(); } catch (e) {}
+      oscillator = null;
+    }
+    if (pinkNoiseSource) {
+      try { pinkNoiseSource.stop(); } catch (e) {}
+      try { pinkNoiseSource.disconnect(); } catch (e) {}
+      pinkNoiseSource = null;
+    }
+    if (gainNode) {
+      try { gainNode.disconnect(); } catch (e) {}
+    }
+
+    const buf = getProgrammeBuffer(ctx);
+    pinkNoiseSource = ctx.createBufferSource();
+    pinkNoiseSource.buffer = buf;
+    pinkNoiseSource.loop = true;
+    gainNode = ctx.createGain();
+    const targetGain = sliderToGain(currentGain * 100);
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + 0.05);
+    pinkNoiseSource.connect(gainNode);
+    connectOutput();
+    pinkNoiseSource.start(0);
+    isPlaying = true;
+    updateUI();
+  }
+
   function updateGain() {
     if (!gainNode || !audioCtx) return;
     if (testMode === 'reverb' && !reverbPhaseIsPink) return;
@@ -1401,6 +1610,10 @@
         const phaseLabel = !isPlaying ? '—' : (reverbPhaseIsPink ? '粉噪' : '静音');
         sweepSub.textContent = phaseLabel;
       }
+    }
+    const panelProgramme = document.getElementById('panelProgramme');
+    if (panelProgramme) {
+      panelProgramme.classList.toggle('is-programme-playing', testMode === 'programme' && isPlaying);
     }
   }
 
@@ -1490,6 +1703,55 @@
     document.getElementById('fieldKnobLabelHigh').textContent = formatBandEdgeLabel(fHighField);
   }
 
+  function renderProgrammeKnob() {
+    const track = document.getElementById('programmeKnobTrack');
+    if (!track) return;
+    track.setAttribute('d', describeArc(cx, cy, R, startAngle, endAngle));
+    const span = endAngle - startAngle;
+    const rL = freqToRatio(fLowProg);
+    const rH = freqToRatio(fHighProg);
+    const angleLow = startAngle + rL * span;
+    const angleHigh = startAngle + rH * span;
+    const a0 = Math.min(angleLow, angleHigh);
+    const a1 = Math.max(angleLow, angleHigh);
+    document.getElementById('programmeKnobFill').setAttribute('d', describeArc(cx, cy, R, a0, a1));
+    const il = polar(cx, cy, capR - 18, angleLow);
+    const ih = polar(cx, cy, capR - 18, angleHigh);
+    document.getElementById('programmeIndLow').setAttribute('cx', il.x);
+    document.getElementById('programmeIndLow').setAttribute('cy', il.y);
+    document.getElementById('programmeIndHigh').setAttribute('cx', ih.x);
+    document.getElementById('programmeIndHigh').setAttribute('cy', ih.y);
+    document.getElementById('programmeLabelLow').textContent = formatBandEdgeLabel(fLowProg);
+    document.getElementById('programmeLabelHigh').textContent = formatBandEdgeLabel(fHighProg);
+    const sub = document.getElementById('programmeSub');
+    if (sub) sub.textContent = ProgrammeNoise.bandIsFull(fLowProg, fHighProg) ? '全带' : '带通';
+  }
+
+  function setProgrammeEdge(which, fPoint) {
+    if (which === 'low') {
+      fLowProg = Math.max(20, Math.min(fPoint, fHighProg / MIN_BAND_RATIO));
+    } else {
+      fHighProg = Math.min(20000, Math.max(fPoint, fLowProg * MIN_BAND_RATIO));
+    }
+  }
+
+  function applyProgrammeDrag(e, svgEl) {
+    const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
+    lastFieldFullRatio = rPoint;
+    setProgrammeEdge(fieldDragSide, ratioToFreq(rPoint));
+    scheduleProgrammeBand();
+  }
+
+  function pickProgrammeHandle(e, svgEl) {
+    const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
+    lastFieldFullRatio = rPoint;
+    const rLow = freqToRatio(fLowProg);
+    const rHigh = freqToRatio(fHighProg);
+    fieldDragSide = Math.abs(rPoint - rLow) <= Math.abs(rPoint - rHigh) ? 'low' : 'high';
+    setProgrammeEdge(fieldDragSide, ratioToFreq(rPoint));
+    scheduleProgrammeBand();
+  }
+
   function applyFieldDragFromEvent(e, svgEl) {
     const rPoint = getFullArcRatio(e, svgEl, lastFieldFullRatio);
     lastFieldFullRatio = rPoint;
@@ -1564,6 +1826,8 @@
       setFrequencyFromRatio(getFullArcRatio(e, svg, knobRatio));
     } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
+    } else if (dragTarget === 'programme-knob' && testMode === 'programme') {
+      applyProgrammeDrag(e, programmeSvg);
     }
   });
   window.addEventListener('mouseup', () => { dragTarget = null; });
@@ -1580,6 +1844,9 @@
     } else if (dragTarget === 'field-knob' && (testMode === 'field' || testMode === 'reverb')) {
       applyFieldDragFromEvent(e, fieldSvg);
       e.preventDefault();
+    } else if (dragTarget === 'programme-knob' && testMode === 'programme') {
+      applyProgrammeDrag(e, programmeSvg);
+      e.preventDefault();
     }
   }, { passive: false });
   window.addEventListener('touchend', () => { dragTarget = null; });
@@ -1595,6 +1862,18 @@
     if (testMode !== 'field' && testMode !== 'reverb') return;
     dragTarget = 'field-knob';
     pickFieldHandleFromPointer(e, fieldSvg);
+    e.preventDefault();
+  }, { passive: false });
+
+  programmeSvg.addEventListener('mousedown', (e) => {
+    if (testMode !== 'programme') return;
+    dragTarget = 'programme-knob';
+    pickProgrammeHandle(e, programmeSvg);
+  });
+  programmeSvg.addEventListener('touchstart', (e) => {
+    if (testMode !== 'programme') return;
+    dragTarget = 'programme-knob';
+    pickProgrammeHandle(e, programmeSvg);
     e.preventDefault();
   }, { passive: false });
 
@@ -1665,14 +1944,16 @@
     const electro = testMode === 'electro';
     const field = testMode === 'field';
     const reverb = testMode === 'reverb';
+    const programme = testMode === 'programme';
     const root = document.documentElement;
-    root.classList.remove('theme-electro', 'theme-field', 'theme-reverb');
+    root.classList.remove('theme-electro', 'theme-field', 'theme-reverb', 'theme-programme');
     root.classList.add('theme-' + testMode);
     document.getElementById('panelElectro').classList.toggle('hidden', !electro);
+    document.getElementById('panelProgramme').classList.toggle('hidden', !programme);
     const panelField = document.getElementById('panelField');
     panelField.classList.toggle('hidden', !field && !reverb);
     panelField.classList.toggle('reverb-step-mode', reverb);
-    document.getElementById('volumeRowElectro').classList.toggle('hidden', !electro && !reverb);
+    document.getElementById('volumeRowElectro').classList.toggle('hidden', field);
     document.getElementById('volumeRowField').classList.toggle('hidden', !field);
     if (electro) {
       volumeSlider.value = volumeSliderField.value;
@@ -1683,12 +1964,19 @@
     }
     updateVolumeDisplays();
     renderFieldKnob();
+    renderProgrammeKnob();
     updateUI();
     const hint = document.getElementById('hintText');
+    const subtitle = document.getElementById('appSubtitle');
+    if (subtitle) {
+      subtitle.textContent = programme ? 'GB/T 6278 Programme Noise' : 'Pure Tone Generator';
+    }
     if (electro) {
       hint.textContent = '拖拽旋钮或点击调节频率';
     } else if (field) {
       hint.textContent = '与电声相同的圆环：两枚触点调带限起止；圆心为扫频状态。下方为输出电平与扫频时长。';
+    } else if (programme) {
+      hint.textContent = '两枚触点是带通下限和上限（24 dB/oct），接在节目噪声后面。两端在 20 Hz 和 20 kHz 时为全带。dBFS 是滤波后的有效值。';
     } else {
       hint.textContent = '与声场相同的双弧圆钮：两枚触点分别调粉噪播放时长与静音时长（圆心为 STEP）。下方与电声测试相同：输出设备与输出电平。';
     }
@@ -1711,6 +1999,8 @@
       startTone(frequency);
     } else if (mode === 'field') {
       startSweep();
+    } else if (mode === 'programme') {
+      startProgramme();
     } else {
       startReverb();
     }
@@ -1820,6 +2110,7 @@
   enumerateDevices();
   renderKnob();
   renderFieldKnob();
+  renderProgrammeKnob();
   updateVolumeDisplays();
   updateSweepDurationLabel();
   updatePinkSilenceLabels();
